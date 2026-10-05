@@ -1,0 +1,21 @@
+# Gradle / Android
+.gradle/
+build/
+/local.properties
+*.apk
+*.aab
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+.kotlin/
+
+# Pasta temporária usada no Windows com acento no caminho do usuário
+.tmp/
+
+# Sistema
+.DS_Store
+Thumbs.db
