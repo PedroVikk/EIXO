@@ -26,6 +26,7 @@ private fun agruparMilhar(digitos: String): String {
 fun formatarKm(km: Long): String = agruparMilhar(abs(km).toString())
 
 fun formatarDecimal(valor: Double, casas: Int = 2): String {
+    if (casas <= 0) return agruparMilhar(abs(valor).roundToLong().toString())
     val fator = Math.pow(10.0, casas.toDouble())
     val inteiroComCasas = (abs(valor) * fator).roundToLong().toString().padStart(casas + 1, '0')
     val inteiro = inteiroComCasas.dropLast(casas)
