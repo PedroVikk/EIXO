@@ -14,9 +14,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Route
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -33,20 +36,30 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.eixo.dados.Carga
 import app.eixo.dados.Dados
 import app.eixo.dados.Perfil
 import app.eixo.dados.Sessao
 import app.eixo.dados.StatusViagem
+import app.eixo.dados.Viagem
+import app.eixo.ui.componentes.EixoAlerta
 import app.eixo.ui.componentes.EixoBotao
+import app.eixo.ui.componentes.EixoBotaoCabecalho
 import app.eixo.ui.componentes.EixoCabecalho
+import app.eixo.ui.componentes.EixoCampo
+import app.eixo.ui.componentes.EixoCampoDataHora
+import app.eixo.ui.componentes.EixoDialogoConfirmacao
 import app.eixo.ui.componentes.EixoEstadoVazio
 import app.eixo.ui.componentes.EixoEtiqueta
 import app.eixo.ui.componentes.EixoLinhaLista
 import app.eixo.ui.componentes.EixoPlaca
 import app.eixo.ui.componentes.EixoRodapeAcao
 import app.eixo.ui.componentes.EixoRotuloSecao
+import app.eixo.ui.componentes.EixoSeletor
 import app.eixo.ui.componentes.EixoTela
 import app.eixo.ui.componentes.Tom
 import app.eixo.ui.design.Eixo
@@ -58,6 +71,7 @@ import app.eixo.ui.telas.comum.TelaEmConstrucao
 import app.eixo.util.formatarConsumo
 import app.eixo.util.formatarDiaMesHora
 import app.eixo.util.formatarKm
+import java.time.LocalDateTime
 
 enum class FiltroStatusViagem(val rotulo: String) {
     TODAS("Todas"),
@@ -222,18 +236,192 @@ fun ViagensTela(
     }
 }
 
-/** Criação e edição — só administrador. */
+/** TELA 08: Formulário para criar e editar viagem — só administrador. */
 @Composable
 fun ViagemFormTela(viagemId: String?, aoVoltar: () -> Unit) {
-    TelaEmConstrucao(
-        titulo = if (viagemId == null) "Nova viagem" else "Editar viagem",
-        modulo = "Viagens",
-        oQueFazer = "Formulário de criação/edição",
-        aoVoltar = aoVoltar,
-    )
+    val existente = remember(viagemId) { viagemId?.let { Dados.viagens.buscar(it) } }
+    val caminhoes by Dados.caminhoes.itens.collectAsState()
+    val usuarios by Dados.usuarios.itens.collectAsState()
+    val cargas by Dados.cargas.itens.collectAsState()
+    val viagens by Dados.viagens.itens.collectAsState()
+
+    val motoristas = remember(usuarios) {
+        usuarios.filter { it.perfil == Perfil.MOTORISTA && it.ativo }
+    }
+
+    var caminhaoSelecionado by remember { mutableStateOf(caminhoes.firstOrNull { it.id == existente?.caminhaoId }) }
+    var motoristaSelecionado by remember { mutableStateOf(motoristas.firstOrNull { it.id == existente?.motoristaId }) }
+    var cargaSelecionada by remember { mutableStateOf(cargas.firstOrNull { it.id == existente?.cargaId }) }
+    var origem by rememberSaveable { mutableStateOf(existente?.origem ?: "") }
+    var destino by rememberSaveable { mutableStateOf(existente?.destino ?: "") }
+    var saidaPrevista by remember { mutableStateOf(existente?.saidaPrevista ?: LocalDateTime.now().plusHours(2)) }
+    var observacao by rememberSaveable { mutableStateOf(existente?.observacao ?: "") }
+
+    var tentouSalvar by rememberSaveable { mutableStateOf(false) }
+    var confirmarExclusao by rememberSaveable { mutableStateOf(false) }
+
+    val erroCaminhao = if (caminhaoSelecionado == null) "Escolha o caminhão." else null
+    val erroMotorista = if (motoristaSelecionado == null) "Escolha o motorista." else null
+    val erroOrigem = if (origem.isBlank()) "Informe a origem da viagem." else null
+    val erroDestino = if (destino.isBlank()) "Informe o destino da viagem." else null
+    val valido = listOf(erroCaminhao, erroMotorista, erroOrigem, erroDestino).all { it == null }
+
+    val numeroViagem = existente?.numero ?: remember { Dados.proximoNumeroViagem() }
+
+    val caminhoesEmViagemIds = remember(viagens) {
+        viagens.filter { it.status == StatusViagem.EM_ANDAMENTO && it.id != existente?.id }.map { it.caminhaoId }.toSet()
+    }
+    val motoristasEmViagemIds = remember(viagens) {
+        viagens.filter { it.status == StatusViagem.EM_ANDAMENTO && it.id != existente?.id }.map { it.motoristaId }.toSet()
+    }
+
+    fun salvar() {
+        tentouSalvar = true
+        if (!valido) return
+        Dados.viagens.salvar(
+            Viagem(
+                id = existente?.id ?: Dados.viagens.novoId(),
+                numero = numeroViagem,
+                caminhaoId = caminhaoSelecionado!!.id,
+                motoristaId = motoristaSelecionado!!.id,
+                cargaId = cargaSelecionada?.id,
+                origem = origem.trim(),
+                destino = destino.trim(),
+                saidaPrevista = saidaPrevista,
+                status = existente?.status ?: StatusViagem.PLANEJADA,
+                kmInicial = existente?.kmInicial,
+                kmFinal = existente?.kmFinal,
+                observacao = observacao.trim(),
+            ),
+        )
+        aoVoltar()
+    }
+
+    EixoTela(
+        cabecalho = {
+            EixoCabecalho(
+                titulo = if (existente == null) "Nova viagem" else "Editar viagem",
+                sobretitulo = "VIAGEM #$numeroViagem",
+                aoVoltar = aoVoltar,
+                acoes = {
+                    if (existente != null && existente.status == StatusViagem.PLANEJADA) {
+                        EixoBotaoCabecalho(Icons.Outlined.DeleteOutline, "Excluir viagem") {
+                            confirmarExclusao = true
+                        }
+                    }
+                },
+            )
+        },
+        rodape = {
+            EixoRodapeAcao {
+                EixoBotao(if (existente == null) "Criar viagem" else "Salvar alterações", aoClicar = ::salvar)
+            }
+        },
+    ) {
+        EixoSeletor(
+            rotulo = "Caminhão",
+            opcoes = caminhoes,
+            selecionado = caminhaoSelecionado,
+            aoSelecionar = { caminhaoSelecionado = it },
+            textoDe = { "${it.placa} - ${it.modelo}" },
+            detalheDe = { c ->
+                val statusCam = if (caminhoesEmViagemIds.contains(c.id)) "em viagem" else "disponível"
+                "${c.modelo} · $statusCam"
+            },
+            erro = if (tentouSalvar) erroCaminhao else null,
+        )
+
+        EixoSeletor(
+            rotulo = "Motorista",
+            opcoes = motoristas,
+            selecionado = motoristaSelecionado,
+            aoSelecionar = { motoristaSelecionado = it },
+            textoDe = { it.nome },
+            detalheDe = { u ->
+                val cnh = u.motorista?.categoriaCnh ?: ""
+                val statusMot = if (motoristasEmViagemIds.contains(u.id)) "com viagem em aberto" else "sem viagem em aberto"
+                "CNH $cnh · $statusMot"
+            },
+            erro = if (tentouSalvar) erroMotorista else null,
+        )
+
+        EixoSeletor(
+            rotulo = "Carga",
+            opcoes = listOf<Carga?>(null) + cargas,
+            selecionado = cargaSelecionada,
+            aoSelecionar = { cargaSelecionada = it },
+            textoDe = { it?.descricao ?: "Nenhuma (sem carga)" },
+            detalheDe = { c -> c?.let { "${it.cliente} · ${formatarKm(it.pesoKg)} kg" } },
+            placeholder = "Selecione uma carga (opcional)",
+            dica = "OPCIONAL",
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(EixoEspaco.s2),
+        ) {
+            EixoCampo(
+                valor = origem,
+                aoMudar = { origem = it },
+                rotulo = "Origem",
+                placeholder = "Goiânia/GO",
+                modifier = Modifier.weight(1f),
+                erro = if (tentouSalvar) erroOrigem else null,
+                teclado = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
+            )
+            EixoCampo(
+                valor = destino,
+                aoMudar = { destino = it },
+                rotulo = "Destino",
+                placeholder = "Cuiabá/MT",
+                modifier = Modifier.weight(1f),
+                erro = if (tentouSalvar) erroDestino else null,
+                teclado = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
+            )
+        }
+
+        EixoCampoDataHora(
+            rotulo = "Saída prevista",
+            dataHora = saidaPrevista,
+            aoSelecionar = { saidaPrevista = it },
+        )
+
+        EixoAlerta(
+            titulo = "KM inicial vem na saída",
+            descricao = "O motorista informa ao iniciar a viagem.",
+            icone = Icons.Outlined.Info,
+            tom = Tom.Acao,
+        )
+
+        EixoCampo(
+            valor = observacao,
+            aoMudar = { observacao = it },
+            rotulo = "Observação",
+            etiqueta = "Opcional",
+            tomEtiqueta = Tom.Neutro,
+            placeholder = "Informações adicionais da rota",
+            linhas = 2,
+            teclado = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Default),
+        )
+    }
+
+    if (confirmarExclusao && existente != null) {
+        EixoDialogoConfirmacao(
+            titulo = "Excluir viagem #${existente.numero}?",
+            texto = "A viagem será removida. Essa ação não pode ser desfeita.",
+            textoConfirmar = "Excluir viagem",
+            perigoso = true,
+            aoConfirmar = {
+                Dados.viagens.remover(existente.id)
+                confirmarExclusao = false
+                aoVoltar()
+            },
+            aoCancelar = { confirmarExclusao = false },
+        )
+    }
 }
 
-/** Detalhe da viagem */
+/** TELA 09: Detalhe e acompanhamento da viagem */
 @Composable
 fun ViagemDetalheTela(
     viagemId: String,
@@ -244,7 +432,7 @@ fun ViagemDetalheTela(
     TelaEmConstrucao(
         titulo = "Viagem",
         modulo = "Viagens",
-        oQueFazer = "Detalhes e acompanhamento da viagem",
+        oQueFazer = "Detalhes da viagem",
         aoVoltar = aoVoltar,
     )
 }
