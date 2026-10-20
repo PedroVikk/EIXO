@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -19,7 +20,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.LocalGasStation
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Route
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -46,32 +51,46 @@ import app.eixo.dados.Perfil
 import app.eixo.dados.Sessao
 import app.eixo.dados.StatusViagem
 import app.eixo.dados.Viagem
+import app.eixo.dominio.Classificacao
+import app.eixo.dominio.classificarConsumo
 import app.eixo.ui.componentes.EixoAlerta
 import app.eixo.ui.componentes.EixoBotao
 import app.eixo.ui.componentes.EixoBotaoCabecalho
 import app.eixo.ui.componentes.EixoCabecalho
 import app.eixo.ui.componentes.EixoCampo
 import app.eixo.ui.componentes.EixoCampoDataHora
+import app.eixo.ui.componentes.EixoCartao
+import app.eixo.ui.componentes.EixoCartaoEficiencia
 import app.eixo.ui.componentes.EixoDialogoConfirmacao
 import app.eixo.ui.componentes.EixoEstadoVazio
 import app.eixo.ui.componentes.EixoEtiqueta
 import app.eixo.ui.componentes.EixoLinhaLista
+import app.eixo.ui.componentes.EixoLinhaValor
+import app.eixo.ui.componentes.EixoOdometro
 import app.eixo.ui.componentes.EixoPlaca
+import app.eixo.ui.componentes.EixoResumoNumeros
 import app.eixo.ui.componentes.EixoRodapeAcao
 import app.eixo.ui.componentes.EixoRotuloSecao
 import app.eixo.ui.componentes.EixoSeletor
 import app.eixo.ui.componentes.EixoTela
+import app.eixo.ui.componentes.NumeroResumo
+import app.eixo.ui.componentes.TamanhoBotao
 import app.eixo.ui.componentes.Tom
+import app.eixo.ui.componentes.VarianteBotao
 import app.eixo.ui.design.Eixo
 import app.eixo.ui.design.EixoAlvo
 import app.eixo.ui.design.EixoEspaco
 import app.eixo.ui.design.EixoRaio
 import app.eixo.ui.design.EixoTipo
-import app.eixo.ui.telas.comum.TelaEmConstrucao
 import app.eixo.util.formatarConsumo
+import app.eixo.util.formatarDecimal
 import app.eixo.util.formatarDiaMesHora
 import app.eixo.util.formatarKm
+import app.eixo.util.formatarMoeda
+import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.temporal.ChronoUnit
+import kotlin.math.abs
 
 enum class FiltroStatusViagem(val rotulo: String) {
     TODAS("Todas"),
@@ -85,6 +104,19 @@ internal fun tomParaStatus(status: StatusViagem): Tom = when (status) {
     StatusViagem.PLANEJADA -> Tom.Neutro
     StatusViagem.FINALIZADA -> Tom.Sucesso
     StatusViagem.CANCELADA -> Tom.Critico
+}
+
+internal fun tempoRelativo(dataHora: LocalDateTime): String {
+    val hoje = LocalDate.now()
+    val data = dataHora.toLocalDate()
+    val dias = ChronoUnit.DAYS.between(data, hoje)
+    return when {
+        dias == 0L -> "hoje"
+        dias == 1L -> "ontem"
+        dias > 1L -> "há $dias dias"
+        dias == -1L -> "amanhã"
+        else -> "em ${abs(dias)} dias"
+    }
 }
 
 /**
@@ -429,10 +461,304 @@ fun ViagemDetalheTela(
     aoEditar: () -> Unit,
     aoRegistrarAbastecimento: (viagemId: String) -> Unit,
 ) {
-    TelaEmConstrucao(
-        titulo = "Viagem",
-        modulo = "Viagens",
-        oQueFazer = "Detalhes da viagem",
-        aoVoltar = aoVoltar,
-    )
+    val usuario by Sessao.usuario.collectAsState()
+    val viagens by Dados.viagens.itens.collectAsState()
+    val caminhoes by Dados.caminhoes.itens.collectAsState()
+    val usuarios by Dados.usuarios.itens.collectAsState()
+    val cargas by Dados.cargas.itens.collectAsState()
+    val abastecimentos by Dados.abastecimentos.itens.collectAsState()
+
+    val viagem = viagens.firstOrNull { it.id == viagemId }
+
+    if (viagem == null) {
+        EixoTela(
+            cabecalho = { EixoCabecalho("Viagem", aoVoltar = aoVoltar) },
+        ) {
+            EixoEstadoVazio(
+                icone = Icons.Outlined.Route,
+                titulo = "Viagem não encontrada",
+                descricao = "A viagem solicitada foi removida ou não existe.",
+                acao = { EixoBotao("Voltar", aoClicar = aoVoltar, larguraTotal = false) },
+            )
+        }
+        return
+    }
+
+    val caminhao = caminhoes.firstOrNull { it.id == viagem.caminhaoId }
+    val motorista = usuarios.firstOrNull { it.id == viagem.motoristaId }
+    val carga = cargas.firstOrNull { it.id == viagem.cargaId }
+    val abasts = abastecimentos.filter { it.viagemId == viagem.id }.sortedBy { it.km }
+
+    val eAdmin = usuario?.perfil == Perfil.ADMIN
+
+    var mostrarDialogoIniciar by rememberSaveable { mutableStateOf(false) }
+    var mostrarDialogoFinalizar by rememberSaveable { mutableStateOf(false) }
+
+    val kmInicialSugestao = remember(viagem, caminhao) {
+        Dados.ultimoKm(viagem.caminhaoId) ?: caminhao?.kmAtual ?: 0L
+    }
+
+    val kmFinalSugestao = remember(abasts, caminhao, viagem) {
+        val maxAbast = abasts.maxOfOrNull { it.km }
+        val maxKm = listOfNotNull(maxAbast, caminhao?.kmAtual, viagem.kmInicial).maxOrNull() ?: 0L
+        maxKm
+    }
+
+    // KM Tacógrafo exibido no cabeçalho
+    val kmTacografo = when (viagem.status) {
+        StatusViagem.FINALIZADA -> viagem.kmFinal ?: abasts.lastOrNull()?.km ?: kmInicialSugestao
+        StatusViagem.EM_ANDAMENTO -> abasts.lastOrNull()?.km ?: viagem.kmInicial ?: kmInicialSugestao
+        else -> kmInicialSugestao
+    }
+
+    // Cálculos da viagem
+    val kmIn = viagem.kmInicial ?: 0L
+    val kmFin = viagem.kmFinal ?: abasts.lastOrNull()?.km ?: kmTacografo
+    val kmRodados = when (viagem.status) {
+        StatusViagem.FINALIZADA -> if (viagem.kmInicial != null && viagem.kmFinal != null) viagem.kmFinal - viagem.kmInicial else (kmFin - kmIn).coerceAtLeast(0L)
+        StatusViagem.EM_ANDAMENTO -> if (viagem.kmInicial != null && kmTacografo > viagem.kmInicial) kmTacografo - viagem.kmInicial else 0L
+        else -> 0L
+    }
+    val totalLitros = abasts.sumOf { it.litros }
+    val consumoMedio = if (totalLitros > 0 && kmRodados > 0) kmRodados.toDouble() / totalLitros else null
+    val esperado = caminhao?.consumoEsperado ?: 2.00
+    val classificacao = consumoMedio?.let { classificarConsumo(it, esperado) }
+
+    val tomStatus = tomParaStatus(viagem.status)
+
+    EixoTela(
+        cabecalho = {
+            EixoCabecalho(
+                titulo = viagem.rota,
+                sobretitulo = "#${viagem.numero} · ${motorista?.nome ?: ""}",
+                aoVoltar = aoVoltar,
+                acoes = {
+                    if (eAdmin && viagem.status != StatusViagem.FINALIZADA) {
+                        EixoBotaoCabecalho(Icons.Outlined.Edit, "Editar viagem", aoEditar)
+                    }
+                },
+                conteudo = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        EixoPlaca(caminhao?.placa ?: "—", sobreEscuro = true)
+                        EixoEtiqueta(
+                            texto = viagem.status.rotulo,
+                            tom = tomStatus,
+                            pulsando = viagem.status == StatusViagem.EM_ANDAMENTO,
+                        )
+                    }
+                    Column(Modifier.padding(top = 4.dp)) {
+                        Text(
+                            "KM ATUAL · TACÓGRAFO",
+                            style = EixoTipo.microRotulo,
+                            color = Eixo.cores.cabecalhoRotulo,
+                        )
+                        Box(Modifier.padding(top = 4.dp)) {
+                            EixoOdometro(kmTacografo)
+                        }
+                    }
+                },
+            )
+        },
+        rodape = {
+            EixoRodapeAcao {
+                when (viagem.status) {
+                    StatusViagem.PLANEJADA -> {
+                        EixoBotao(
+                            "Iniciar viagem",
+                            aoClicar = {
+                                mostrarDialogoIniciar = true
+                            },
+                            variante = VarianteBotao.Primario,
+                            icone = Icons.Outlined.PlayArrow,
+                            tamanho = TamanhoBotao.Grande,
+                        )
+                    }
+                    StatusViagem.EM_ANDAMENTO -> {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(EixoEspaco.s2),
+                        ) {
+                            EixoBotao(
+                                "Abastecer",
+                                aoClicar = { aoRegistrarAbastecimento(viagem.id) },
+                                variante = VarianteBotao.Primario,
+                                icone = Icons.Outlined.LocalGasStation,
+                                modifier = Modifier.weight(1f),
+                                tamanho = TamanhoBotao.Grande,
+                            )
+                            EixoBotao(
+                                "Finalizar",
+                                aoClicar = {
+                                    mostrarDialogoFinalizar = true
+                                },
+                                variante = VarianteBotao.Secundario,
+                                icone = Icons.Outlined.Flag,
+                                modifier = Modifier.weight(1f),
+                                tamanho = TamanhoBotao.Grande,
+                            )
+                        }
+                    }
+                    StatusViagem.FINALIZADA -> {
+                        EixoBotao(
+                            "Registrar combustível",
+                            aoClicar = { aoRegistrarAbastecimento(viagem.id) },
+                            variante = VarianteBotao.Fantasma,
+                            icone = Icons.Outlined.LocalGasStation,
+                        )
+                    }
+                    StatusViagem.CANCELADA -> {}
+                }
+            }
+        },
+    ) {
+        // Faixa com KPIs da viagem
+        EixoResumoNumeros(
+            itens = listOf(
+                NumeroResumo(formatarKm(kmRodados), "km rodados"),
+                NumeroResumo(abasts.size.toString(), "abastec."),
+                NumeroResumo(formatarDecimal(totalLitros, 0), "litros"),
+                NumeroResumo(
+                    consumoMedio?.let { formatarDecimal(it) } ?: "—",
+                    "km/L",
+                    tom = classificacao?.let {
+                        when (it) {
+                            Classificacao.NORMAL -> Tom.Sucesso
+                            Classificacao.ATENCAO -> Tom.Atencao
+                            Classificacao.CRITICO -> Tom.Critico
+                        }
+                    },
+                ),
+            ),
+        )
+
+        // Cartão de eficiência / consumo
+        if (caminhao != null) {
+            val consumoExibir = consumoMedio ?: caminhao.consumoEsperado
+            val rodapeCard = if (consumoMedio != null) {
+                val desvio = (consumoMedio / caminhao.consumoEsperado - 1.0) * 100.0
+                val sinal = if (desvio > 0) "+" else ""
+                "$sinal${formatarDecimal(desvio, 1)}% em relação à meta da frota"
+            } else {
+                "Sem abastecimentos suficientes para calcular consumo"
+            }
+            EixoCartaoEficiencia(
+                placa = caminhao.placa,
+                real = consumoExibir,
+                esperado = caminhao.consumoEsperado,
+                descricao = caminhao.modelo,
+                rodape = rodapeCard,
+            )
+        }
+
+        // Carga vinculada
+        if (carga != null) {
+            EixoCartao(espacamento = 4.dp) {
+                EixoRotuloSecao("CARGA")
+                EixoLinhaValor("Descrição", carga.descricao)
+                EixoLinhaValor("Cliente", carga.cliente)
+                EixoLinhaValor("Tipo / Peso", "${carga.tipo.rotulo} · ${formatarKm(carga.pesoKg)} kg")
+                if (carga.notaFiscal.isNotBlank()) {
+                    EixoLinhaValor("Nota Fiscal", carga.notaFiscal)
+                }
+                if (carga.observacao.isNotBlank()) {
+                    EixoLinhaValor("Observação", carga.observacao, numerico = false, ultima = true)
+                }
+            }
+        }
+
+        // Seção Abastecimentos
+        EixoRotuloSecao(
+            texto = "ABASTECIMENTOS",
+            acao = "Registrar",
+            aoClicarAcao = { aoRegistrarAbastecimento(viagem.id) },
+        )
+
+        if (abasts.isEmpty()) {
+            EixoEstadoVazio(
+                icone = Icons.Outlined.LocalGasStation,
+                titulo = "Nenhum abastecimento",
+                descricao = "Os abastecimentos registrados nesta viagem aparecerão aqui.",
+                acao = {
+                    EixoBotao(
+                        "Registrar combustível",
+                        aoClicar = { aoRegistrarAbastecimento(viagem.id) },
+                        icone = Icons.Outlined.LocalGasStation,
+                        larguraTotal = false,
+                    )
+                },
+            )
+        } else {
+            abasts.forEach { abast ->
+                val arlaTexto = abast.arlaLitros?.let { " · ARLA ${formatarDecimal(it, 0)} L" } ?: ""
+                val statusTanque = if (abast.tanqueCheio) "cheio" else "parcial"
+                EixoLinhaLista(
+                    titulo = "${formatarKm(abast.km)} km",
+                    subtitulo = "${tempoRelativo(abast.dataHora)} · ${formatarDecimal(abast.litros, 0)} L · $statusTanque$arlaTexto",
+                    apoio = abast.posto,
+                    inicio = {
+                        Box(
+                            Modifier.size(38.dp).clip(EixoRaio.sm).background(Eixo.cores.superficie2),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(Icons.Outlined.LocalGasStation, contentDescription = null, tint = Eixo.cores.textoFraco, modifier = Modifier.size(20.dp))
+                        }
+                    },
+                    fim = {
+                        Text(
+                            formatarMoeda(abast.valorTotal),
+                            style = EixoTipo.dadoPequeno,
+                            color = Eixo.cores.texto,
+                        )
+                    },
+                )
+            }
+        }
+    }
+
+    // Diálogo para Iniciar Viagem
+    if (mostrarDialogoIniciar) {
+        EixoDialogoConfirmacao(
+            titulo = "Iniciar viagem #${viagem.numero}?",
+            texto = "A viagem passará para o estado 'Em andamento' com o KM inicial registrado (${formatarKm(kmInicialSugestao)} km).",
+            textoConfirmar = "Confirmar início",
+            aoConfirmar = {
+                Dados.viagens.salvar(
+                    viagem.copy(
+                        status = StatusViagem.EM_ANDAMENTO,
+                        kmInicial = kmInicialSugestao,
+                    ),
+                )
+                if (caminhao != null && kmInicialSugestao > caminhao.kmAtual) {
+                    Dados.caminhoes.salvar(caminhao.copy(kmAtual = kmInicialSugestao))
+                }
+                mostrarDialogoIniciar = false
+            },
+            aoCancelar = { mostrarDialogoIniciar = false },
+        )
+    }
+
+    // Diálogo para Finalizar Viagem
+    if (mostrarDialogoFinalizar) {
+        EixoDialogoConfirmacao(
+            titulo = "Finalizar viagem #${viagem.numero}?",
+            texto = "A viagem será concluída com o KM final registrado (${formatarKm(kmFinalSugestao)} km). Verifique se todos os abastecimentos foram lançados.",
+            textoConfirmar = "Finalizar viagem",
+            aoConfirmar = {
+                Dados.viagens.salvar(
+                    viagem.copy(
+                        status = StatusViagem.FINALIZADA,
+                        kmFinal = kmFinalSugestao,
+                    ),
+                )
+                if (caminhao != null && kmFinalSugestao > caminhao.kmAtual) {
+                    Dados.caminhoes.salvar(caminhao.copy(kmAtual = kmFinalSugestao))
+                }
+                mostrarDialogoFinalizar = false
+            },
+            aoCancelar = { mostrarDialogoFinalizar = false },
+        )
+    }
 }
