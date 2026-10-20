@@ -48,7 +48,7 @@ e o botão **Catálogo de componentes** — abra o catálogo antes de construir 
 | Login e Conta | `ui/telas/acesso/` | ✅ funcional — refinar visual |
 | **Cargas (lista + formulário)** | `ui/telas/cargas/` | ✅ **tela de referência** |
 | Pessoas (motoristas e admins) | `ui/telas/usuarios/` | 🚧 a construir |
-| Viagens (lista, formulário, detalhe) | `ui/telas/viagens/` | 🚧 a construir |
+| Viagens (lista, formulário, detalhe) | `ui/telas/viagens/` | ✅ pronto |
 | Combustível (lista, formulário) | `ui/telas/combustivel/` | 🚧 a construir |
 | Painel | `ui/telas/painel/` | 🚧 a construir |
 
