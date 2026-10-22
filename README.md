@@ -162,8 +162,3 @@ app/src/main/java/app/eixo/
 no dispositivo virtual e inicie de novo com *Cold Boot*.
 
 ---
-
-## Depois: Firebase
-
-As telas só conhecem a interface `Repositorio<T>` (`dados/Dados.kt`). Para ligar no Firebase, crie
-uma implementação `RepositorioFirestore<T>` e troque as linhas do objeto `Dados`. Nenhuma tela muda.
