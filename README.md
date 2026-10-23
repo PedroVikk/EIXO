@@ -47,9 +47,9 @@ e o botão **Catálogo de componentes** — abra o catálogo antes de construir 
 | Navegação e barra inferior por perfil | `ui/navegacao/` | ✅ pronto |
 | Login e Conta | `ui/telas/acesso/` | ✅ funcional — refinar visual |
 | **Cargas (lista + formulário)** | `ui/telas/cargas/` | ✅ **tela de referência** |
-| Pessoas (motoristas e admins) | `ui/telas/usuarios/` | 🚧 a construir |
+| Pessoas (motoristas e admins) | `ui/telas/usuarios/` | ✅ pronto |
 | Viagens (lista, formulário, detalhe) | `ui/telas/viagens/` | ✅ pronto |
-| Combustível (lista, formulário) | `ui/telas/combustivel/` | 🚧 a construir |
+| Combustível (lista, formulário) | `ui/telas/combustivel/` | ✅ pronto |
 | Painel | `ui/telas/painel/` | 🚧 a construir |
 
 Cada tela 🚧 já existe com a **assinatura definitiva** e um marcador "em construção" explicando
@@ -65,10 +65,10 @@ merge não vira briga.
 | Módulo | Pasta | Telas | Figma | Responsável |
 |---|---|---|---|---|
 | Base | `ui/design`, `ui/componentes`, `ui/navegacao`, `dados`, `dominio` | — | — | Pedro |
-| Pessoas | `ui/telas/usuarios` | Lista de pessoas, Cadastro de pessoa | `03`, `04` | _a definir_ |
-| Viagens | `ui/telas/viagens` | Viagens, Nova viagem, Detalhe (iniciar/finalizar) | `07`, `08`, `09` | _a definir_ |
-| Combustível | `ui/telas/combustivel` | Abastecimentos, Novo abastecimento | `10`, `11` | _a definir_ |
-| Painel e acesso | `ui/telas/painel`, `ui/telas/acesso` | Painel, refino do Login e da Conta | `01`, `02`, `12` | _a definir_ |
+| Pessoas | `ui/telas/usuarios` | Lista de pessoas, Cadastro de pessoa | `03`, `04` | Victor Hugo |
+| Viagens | `ui/telas/viagens` | Viagens, Nova viagem, Detalhe (iniciar/finalizar) | `07`, `08`, `09` | Kayque Vêncio |
+| Combustível | `ui/telas/combustivel` | Abastecimentos, Novo abastecimento | `10`, `11` | Luccas |
+| Painel e acesso | `ui/telas/painel`, `ui/telas/acesso` | Painel, refino do Login e da Conta | `01`, `02`, `12` | Matheus Souza |
 
 Viagens é o módulo mais pesado. Com só três pessoas além da base, junte **Combustível + Painel**.
 As telas de referência visual estão em [`design/figma/`](design/figma/README.md).
