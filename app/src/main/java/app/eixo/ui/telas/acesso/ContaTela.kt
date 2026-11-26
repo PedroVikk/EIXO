@@ -17,7 +17,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import app.eixo.dados.Sessao
 import app.eixo.ui.componentes.EixoBotao
@@ -29,6 +28,7 @@ import app.eixo.ui.componentes.EixoTela
 import app.eixo.ui.componentes.Tom
 import app.eixo.ui.componentes.VarianteBotao
 import app.eixo.ui.design.Eixo
+import app.eixo.ui.design.EixoEspaco
 import app.eixo.ui.design.EixoRaio
 import app.eixo.ui.design.EixoTipo
 import app.eixo.util.formatarData
@@ -42,12 +42,12 @@ fun ContaTela(barra: @Composable () -> Unit, aoSair: () -> Unit, aoAbrirCatalogo
     val iniciais = u.nome.split(" ").filter { it.isNotBlank() }.let { p -> (p.first().take(1) + p.last().take(1)).uppercase() }
 
     EixoTela(cabecalho = { EixoCabecalho("Conta") }, barraInferior = barra) {
-        EixoCartao(espacamento = 12.dp) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        EixoCartao(espacamento = EixoEspaco.s3) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(EixoEspaco.s3)) {
                 Box(
-                    Modifier.size(48.dp).clip(EixoRaio.md).background(Brush.linearGradient(listOf(Color(0xFF3D6BF0), Color(0xFF12275C)))),
+                    Modifier.size(48.dp).clip(EixoRaio.md).background(Brush.linearGradient(c.marcaDegrade)),
                     contentAlignment = Alignment.Center,
-                ) { Text(iniciais, style = EixoTipo.dado.copy(color = Color.White)) }
+                ) { Text(iniciais, style = EixoTipo.dado, color = c.sobreMarca) }
                 Column(Modifier.weight(1f)) {
                     Text(u.nome, style = EixoTipo.tituloSecao, color = c.texto)
                     Text(u.login, style = EixoTipo.dadoPequeno, color = c.textoFraco)

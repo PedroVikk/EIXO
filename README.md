@@ -45,15 +45,15 @@ e o botão **Catálogo de componentes** — abra o catálogo antes de construir 
 | Dados falsos com repositórios | `dados/` | ✅ pronto |
 | Cálculos do painel (consumo, custo/km) | `dominio/` | ✅ pronto e testado |
 | Navegação e barra inferior por perfil | `ui/navegacao/` | ✅ pronto |
-| Login e Conta | `ui/telas/acesso/` | ✅ funcional — refinar visual |
+| Login e Conta | `ui/telas/acesso/` | ✅ pronto |
 | **Cargas (lista + formulário)** | `ui/telas/cargas/` | ✅ **tela de referência** |
 | Pessoas (motoristas e admins) | `ui/telas/usuarios/` | ✅ pronto |
 | Viagens (lista, formulário, detalhe) | `ui/telas/viagens/` | ✅ pronto |
-| Combustível (lista, formulário) | `ui/telas/combustivel/` | ✅ pronto |
-| Painel | `ui/telas/painel/` | 🚧 a construir |
+| Combustível (lista, detalhe, formulário) | `ui/telas/combustivel/` | ✅ pronto |
+| Painel | `ui/telas/painel/` | ✅ pronto |
 
-Cada tela 🚧 já existe com a **assinatura definitiva** e um marcador "em construção" explicando
-o que fazer. Você substitui o corpo da função; a assinatura e a navegação não mudam.
+Todas as telas do escopo estão construídas. A assinatura de cada tela e a navegação não mudam
+quando o Firebase entrar — só a camada `dados/`.
 
 ---
 
@@ -103,7 +103,7 @@ não edite `ui/componentes` por conta própria: um ajuste ali muda a tela de tod
 
 1. Abra o **Catálogo** no app e encontre os componentes que a sua tela usa.
 2. Abra `ui/telas/cargas/CargasTela.kt` e `CargaFormTela.kt` — são o modelo.
-3. No arquivo do seu módulo, troque a chamada a `TelaEmConstrucao(...)` pelo conteúdo real.
+3. No arquivo do seu módulo, monte a tela com `EixoTela` e os componentes do catálogo.
 4. Leia dados com `Dados.xxx.itens.collectAsState()` e grave com `Dados.xxx.salvar(...)`.
 5. Compare com a tela correspondente no design system antes de abrir o Pull Request.
 
