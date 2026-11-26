@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.LinkOff
 import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -26,8 +27,13 @@ import app.eixo.ui.componentes.EixoRotuloSecao
 import app.eixo.ui.componentes.EixoTela
 import app.eixo.ui.componentes.NumeroResumo
 import app.eixo.ui.componentes.Tom
+import app.eixo.ui.design.Eixo
 import app.eixo.ui.design.EixoEspaco
-import java.util.Locale
+import app.eixo.ui.design.EixoTipo
+import app.eixo.util.formatarConsumo
+import app.eixo.util.formatarDecimal
+import app.eixo.util.formatarKm
+import app.eixo.util.formatarMoeda
 
 /*
  * MÓDULO PAINEL (dashboard do administrador).
@@ -37,13 +43,9 @@ import java.util.Locale
  * Os números vêm prontos de dominio/Indicadores.kt → calcularIndicadores(...).
  */
 
-private val ptBr = Locale.forLanguageTag("pt-BR")
-
-// Formatadores locais (só texto). Se util/Formatos.kt já tiver equivalentes, troque por eles.
-private fun dinheiro(v: Double) = "R$ " + String.format(ptBr, "%,.0f", v)
-private fun dinheiro2(v: Double) = "R$ " + String.format(ptBr, "%,.2f", v)
-private fun litros(v: Double) = String.format(ptBr, "%,.0f", v) + " L"
-private fun kmPorLitro(v: Double) = String.format(ptBr, "%.2f", v) + " km/L"
+// KPI do mês arredonda para o inteiro (R$ 28.942, 4.500 L), como no design.
+private fun dinheiroInteiro(v: Double) = "R$ ${formatarDecimal(v, 0)}"
+private fun litrosInteiro(v: Double) = "${formatarDecimal(v, 0)} L"
 
 @Composable
 fun PainelTela(
@@ -51,7 +53,6 @@ fun PainelTela(
     aoSair: () -> Unit,
     aoAbrirViagens: () -> Unit,
 ) {
-    // CONFIRMAR: nomes dos repositórios em Dados (caminhoes, viagens, abastecimentos).
     val caminhoes by Dados.caminhoes.itens.collectAsState()
     val viagens by Dados.viagens.itens.collectAsState()
     val abastecimentos by Dados.abastecimentos.itens.collectAsState()
@@ -72,7 +73,12 @@ fun PainelTela(
                         aoClicar = aoSair,
                     )
                 },
-                conteudo = { EixoOdometro(ind.kmRodados) },
+                conteudo = {
+                    Column(verticalArrangement = Arrangement.spacedBy(EixoEspaco.s1)) {
+                        Text("KM RODADOS", style = EixoTipo.microRotulo, color = Eixo.cores.cabecalhoRotulo)
+                        EixoOdometro(ind.kmRodados)
+                    }
+                },
             )
         },
         barraInferior = barra,
@@ -91,14 +97,14 @@ fun PainelTela(
         EixoRotuloSecao("Indicadores do mês")
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(EixoEspaco.s2)) {
             Column(Modifier.weight(1f)) {
-                EixoKpi("Combustível", dinheiro(ind.gastoTotal), apoio = "diesel + ARLA")
+                EixoKpi("Combustível", dinheiroInteiro(ind.gastoTotal), apoio = "diesel + ARLA")
             }
             Column(Modifier.weight(1f)) {
                 val precoMedio = if (ind.litros > 0) ind.gastoDiesel / ind.litros else null
                 EixoKpi(
                     "Litros",
-                    litros(ind.litros),
-                    apoio = precoMedio?.let { "preço médio ${dinheiro2(it)}/L" } ?: "sem abastecimentos",
+                    litrosInteiro(ind.litros),
+                    apoio = precoMedio?.let { "preço médio ${formatarMoeda(it)}/L" } ?: "sem abastecimentos",
                 )
             }
         }
@@ -106,14 +112,14 @@ fun PainelTela(
             Column(Modifier.weight(1f)) {
                 EixoKpi(
                     "Média",
-                    ind.consumoMedio?.let { kmPorLitro(it) } ?: "—",
+                    ind.consumoMedio?.let { formatarConsumo(it) } ?: "—",
                     apoio = "ponderada",
                 )
             }
             Column(Modifier.weight(1f)) {
                 EixoKpi(
                     "Custo por km",
-                    ind.custoPorKm?.let { dinheiro2(it) } ?: "—",
+                    ind.custoPorKm?.let { formatarMoeda(it) } ?: "—",
                     apoio = "combustível",
                 )
             }
@@ -158,7 +164,7 @@ fun PainelTela(
                     real = item.consumo!!,
                     esperado = item.caminhao.consumoEsperado,
                     descricao = item.caminhao.modelo,
-                    rodape = "${String.format(ptBr, "%,d", item.kmRodados)} km rodados",
+                    rodape = "${formatarKm(item.kmRodados)} km rodados",
                 )
             }
     }

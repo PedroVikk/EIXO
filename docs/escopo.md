@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Entrega** | Aplicativo Android, só front-end, dados em memória |
-| **Tecnologia** | Kotlin, Jetpack Compose, Material 3, Navigation Compose |
+| **Entrega** | Aplicativo Android com banco local (Room), login (Firebase) e API do IBGE (Retrofit) |
+| **Tecnologia** | Kotlin, Jetpack Compose, Material 3, Navigation Compose, Room, Retrofit + OkHttp, Firebase Auth |
 | **Prazo** | menos de 1 mês |
 | **Base visual** | Design system Eixo (21 telas) — a fonte de verdade de como cada tela deve parecer |
 
@@ -16,12 +16,12 @@ ninguém gastar tempo construindo o que não vai ser avaliado.
 
 | # | Funcionalidade | Telas | Módulo |
 |---|---|---|---|
-| 1 | Login | Entrar, Conta | Acesso |
-| 2 | Cadastro de motorista e administrador | Pessoas, Cadastro de pessoa | Acesso |
+| 1 | Login | Entrar, Conta | ✅ pronto |
+| 2 | Cadastro de motorista e administrador | Pessoas, Cadastro de pessoa | ✅ pronto |
 | 3 | Cadastro de cargas | Cargas, Cadastro de carga | ✅ pronto (referência) |
-| 4 | Cadastro de viagens | Viagens, Nova viagem, Detalhe da viagem | Viagens |
-| 5 | Dashboard | Painel | Painel |
-| 6 | Cadastro de combustível (registro de abastecimento) | Combustível, Novo abastecimento | Combustível |
+| 4 | Cadastro de viagens | Viagens, Nova viagem, Detalhe da viagem | ✅ pronto |
+| 5 | Dashboard | Painel | ✅ pronto |
+| 6 | Cadastro de combustível (registro de abastecimento) | Combustível, Novo abastecimento | ✅ pronto |
 
 Caminhões vêm prontos nos dados de exemplo — não há tela de cadastro de caminhão.
 
@@ -33,30 +33,30 @@ Uma tela só está pronta quando cumpre **todos** os itens dela e os gerais.
 
 ### Gerais — valem para toda tela
 
-- [ ] Usa `EixoTela` + `EixoCabecalho`; nenhuma cor, fonte ou espaçamento literal
+- [x] Usa `EixoTela` + `EixoCabecalho`; nenhuma cor, fonte ou espaçamento literal
 - [ ] Funciona nos temas claro e escuro (teste pelo catálogo e pelo sistema)
-- [ ] Lista vazia mostra `EixoEstadoVazio` com uma explicação
-- [ ] Formulário só mostra erro depois da primeira tentativa de salvar
-- [ ] Mensagem de erro diz o que fazer ("Informe o peso em quilos"), não só que errou
-- [ ] Excluir pede confirmação com `EixoDialogoConfirmacao`
-- [ ] Girar a tela não perde o que foi digitado (`rememberSaveable`)
+- [x] Lista vazia mostra `EixoEstadoVazio` com uma explicação
+- [x] Formulário só mostra erro depois da primeira tentativa de salvar
+- [x] Mensagem de erro diz o que fazer ("Informe o peso em quilos"), não só que errou
+- [x] Excluir pede confirmação com `EixoDialogoConfirmacao`
+- [x] Girar a tela não perde o que foi digitado (`rememberSaveable`)
 
-### 1 · Login — já funcional
+### 1 · Login — pronto
 
 - [x] Entra com e-mail (admin) ou matrícula (motorista) e senha
 - [x] Credencial errada e acesso inativo mostram mensagens diferentes
 - [x] Administrador cai no Painel; motorista, em Viagens
-- [ ] Visual refinado conforme a tela "Entrar" do design system
+- [x] Visual refinado conforme a tela "Entrar" do design system
 - [x] Conta mostra os dados do usuário e permite sair
 
-### 2 · Pessoas
+### 2 · Pessoas — pronto
 
-- [ ] Lista com filtro Motoristas / Administradores (`EixoSegmentado`)
-- [ ] Inativo aparece com etiqueta "Inativo"
-- [ ] Cadastro com perfil; campos de motorista (CPF, CNH, categoria, validade, telefone) **só** quando o perfil é Motorista
-- [ ] Login não pode repetir outro já cadastrado
-- [ ] CNH vencida ou vencendo em 30 dias aparece em destaque
-- [ ] Só administrador acessa
+- [x] Lista com filtro Motoristas / Administradores (`EixoSegmentado`)
+- [x] Inativo aparece com etiqueta "Inativo"
+- [x] Cadastro com perfil; campos de motorista (CPF, CNH, categoria, validade, telefone) **só** quando o perfil é Motorista
+- [x] Login não pode repetir outro já cadastrado
+- [x] CNH vencida ou vencendo em 30 dias aparece em destaque
+- [x] Só administrador acessa
 
 ### 3 · Cargas — pronto
 
@@ -65,34 +65,34 @@ Uma tela só está pronta quando cumpre **todos** os itens dela e os gerais.
 - [x] Cadastro e edição com validação
 - [x] Exclusão bloqueada quando a carga está vinculada a uma viagem
 
-### 4 · Viagens
+### 4 · Viagens — pronto
 
-- [ ] Lista com placa, rota, motorista e etiqueta de status; filtro por status
-- [ ] Motorista vê **só** as viagens dele
-- [ ] Nova viagem (só admin): caminhão, motorista e carga por `EixoSeletor`; origem, destino, saída com `EixoCampoDataHora`
-- [ ] Número gerado com `Dados.proximoNumeroViagem()`
-- [ ] Um caminhão ou motorista não pode ter duas viagens em andamento
-- [ ] Detalhe com rota, status, KM e os abastecimentos da viagem
-- [ ] Iniciar viagem pede o KM inicial (pré-preenchido com `Dados.ultimoKm`); finalizar pede o KM final, que não pode ser menor
+- [x] Lista com placa, rota, motorista e etiqueta de status; filtro por status
+- [x] Motorista vê **só** as viagens dele
+- [x] Nova viagem (só admin): caminhão, motorista e carga por `EixoSeletor`; origem, destino, saída com `EixoCampoDataHora`
+- [x] Número gerado com `Dados.proximoNumeroViagem()`
+- [x] Um caminhão ou motorista não pode ter duas viagens em andamento
+- [x] Detalhe com rota, status, KM e os abastecimentos da viagem
+- [x] Iniciar viagem pede o KM inicial (pré-preenchido com `Dados.ultimoKm`); finalizar pede o KM final, que não pode ser menor
 
-### 5 · Painel
+### 5 · Painel — pronto
 
-- [ ] Números de `calcularIndicadores(...)` — **não recalcule na tela**
-- [ ] Caminhões por situação (`EixoResumoNumeros`)
-- [ ] KM rodados (`EixoOdometro`), gasto, litros, km/L médio e R$/km (`EixoKpi`)
-- [ ] Alertas de consumo fora da faixa com a placa (`EixoAlerta`)
-- [ ] Eficiência por caminhão (`EixoCartaoEficiencia`), do pior para o melhor
-- [ ] Alerta quando houver abastecimento sem viagem
+- [x] Números de `calcularIndicadores(...)` — **não recalcule na tela**
+- [x] Caminhões por situação (`EixoResumoNumeros`)
+- [x] KM rodados (`EixoOdometro`), gasto, litros, km/L médio e R$/km (`EixoKpi`)
+- [x] Alertas de consumo fora da faixa com a placa (`EixoAlerta`)
+- [x] Eficiência por caminhão (`EixoCartaoEficiencia`), do pior para o melhor
+- [x] Alerta quando houver abastecimento sem viagem
 
-### 6 · Combustível
+### 6 · Combustível — pronto
 
-- [ ] Histórico com data, placa, KM, litros e valor; motorista vê só os dele
-- [ ] KM pré-preenchido com o último conhecido (`EixoCampoKm` com `sugerido`)
-- [ ] Litros e valor com máscara; preço por litro calculado (`EixoCampoCalculado`)
-- [ ] Combustível, posto e "Tanque cheio?" obrigatórios
-- [ ] ARLA opcional: só mostra os campos quando a resposta é Sim
-- [ ] KM menor que o último registrado é recusado com mensagem clara
-- [ ] Registro pode ser feito sem viagem (avulso)
+- [x] Histórico com data, placa, KM, litros e valor; motorista vê só os dele
+- [x] KM pré-preenchido com o último conhecido (`EixoCampoKm` com `sugerido`)
+- [x] Litros e valor com máscara; preço por litro calculado (`EixoCampoCalculado`)
+- [x] Combustível, posto e "Tanque cheio?" obrigatórios
+- [x] ARLA opcional: só mostra os campos quando a resposta é Sim
+- [x] KM menor que o último registrado é recusado com mensagem clara
+- [x] Registro pode ser feito sem viagem (avulso)
 
 ---
 
@@ -102,10 +102,9 @@ Existem no MVP comercial e **não** fazem parte do trabalho:
 
 - Fotos (cupom, tacógrafo, veículo no posto) e check-in/check-out com foto
 - Identificação do posto pela localização
-- Funcionamento offline e fila de envio
+- Sincronização entre aparelhos e fila de envio (os dados ficam só no aparelho)
 - Senha temporária e troca obrigatória no primeiro acesso
 - Relatório da viagem em PDF
-- Banco de dados real — o Firebase entra depois, trocando só a camada `dados/`
 
 ---
 

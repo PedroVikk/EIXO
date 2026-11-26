@@ -1,11 +1,14 @@
 package app.eixo.dados
 
+import androidx.room.Embedded
+import androidx.room.Entity
+import androidx.room.PrimaryKey
 import java.time.LocalDate
 import java.time.LocalDateTime
 
 /*
- * Modelos do app. Nesta versão (só front) os dados vivem em memória —
- * ver Dados.kt. Os nomes dos campos já seguem o modelo que irá para o Firebase.
+ * Modelos do app. Cada um também é uma tabela do banco local (Room) — ver Banco.kt.
+ * Enum vira texto com o nome da constante; data e data-hora viram texto ISO (Conversores).
  */
 
 enum class Perfil(val rotulo: String) {
@@ -28,18 +31,21 @@ data class DadosMotorista(
  *
  * @param login e-mail (admin) ou matrícula (motorista).
  */
+@Entity(tableName = "usuarios")
 data class Usuario(
-    val id: String,
+    @PrimaryKey val id: String,
     val nome: String,
     val login: String,
     val perfil: Perfil,
     val ativo: Boolean = true,
-    val motorista: DadosMotorista? = null,
+    /** Colunas `motorista_*` na mesma tabela; ficam nulas para administrador. */
+    @Embedded(prefix = "motorista_") val motorista: DadosMotorista? = null,
 )
 
 /** Caminhões vêm prontos nesta versão — não há tela de cadastro de caminhão no escopo. */
+@Entity(tableName = "caminhoes")
 data class Caminhao(
-    val id: String,
+    @PrimaryKey val id: String,
     val placa: String,
     val modelo: String,
     val consumoEsperado: Double,
@@ -55,8 +61,9 @@ enum class TipoCarga(val rotulo: String) {
     OUTRA("Outra"),
 }
 
+@Entity(tableName = "cargas")
 data class Carga(
-    val id: String,
+    @PrimaryKey val id: String,
     val descricao: String,
     val tipo: TipoCarga,
     val pesoKg: Long,
@@ -72,8 +79,9 @@ enum class StatusViagem(val rotulo: String) {
     CANCELADA("Cancelada"),
 }
 
+@Entity(tableName = "viagens")
 data class Viagem(
-    val id: String,
+    @PrimaryKey val id: String,
     val numero: String,
     val caminhaoId: String,
     val motoristaId: String,
@@ -102,8 +110,9 @@ enum class TipoCombustivel(val rotulo: String) {
  * Registro de abastecimento ("cadastro de combustível").
  * ARLA é opcional e entra no custo por km, mas NUNCA no cálculo de km/L.
  */
+@Entity(tableName = "abastecimentos")
 data class Abastecimento(
-    val id: String,
+    @PrimaryKey val id: String,
     val viagemId: String?,
     val caminhaoId: String,
     val motoristaId: String,

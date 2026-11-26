@@ -44,7 +44,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import app.eixo.dados.Carga
 import app.eixo.dados.Dados
 import app.eixo.dados.Perfil
@@ -59,6 +58,7 @@ import app.eixo.ui.componentes.EixoBotaoCabecalho
 import app.eixo.ui.componentes.EixoCabecalho
 import app.eixo.ui.componentes.EixoCampo
 import app.eixo.ui.componentes.EixoCampoDataHora
+import app.eixo.ui.componentes.EixoCampoKm
 import app.eixo.ui.componentes.EixoCartao
 import app.eixo.ui.componentes.EixoCartaoEficiencia
 import app.eixo.ui.componentes.EixoDialogoConfirmacao
@@ -66,6 +66,7 @@ import app.eixo.ui.componentes.EixoEstadoVazio
 import app.eixo.ui.componentes.EixoEtiqueta
 import app.eixo.ui.componentes.EixoLinhaLista
 import app.eixo.ui.componentes.EixoLinhaValor
+import app.eixo.ui.componentes.EixoNotaRodape
 import app.eixo.ui.componentes.EixoOdometro
 import app.eixo.ui.componentes.EixoPlaca
 import app.eixo.ui.componentes.EixoResumoNumeros
@@ -82,6 +83,7 @@ import app.eixo.ui.design.EixoAlvo
 import app.eixo.ui.design.EixoEspaco
 import app.eixo.ui.design.EixoRaio
 import app.eixo.ui.design.EixoTipo
+import app.eixo.util.digitosParaKm
 import app.eixo.util.formatarConsumo
 import app.eixo.util.formatarDecimal
 import app.eixo.util.formatarDiaMesHora
@@ -183,19 +185,19 @@ fun ViagensTela(
                         .border(1.dp, if (marcado) c.acao else c.borda, EixoRaio.pilula)
                         .clickable(role = Role.RadioButton) { filtroSelecionado = filtro }
                         .semantics { selected = marcado }
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                        .padding(horizontal = EixoEspaco.s3, vertical = EixoEspaco.s1),
                     contentAlignment = Alignment.Center,
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(EixoEspaco.s1),
                     ) {
                         if (marcado) {
                             Icon(Icons.Outlined.Check, contentDescription = null, tint = c.acao, modifier = Modifier.size(14.dp))
                         }
                         Text(
                             filtro.rotulo,
-                            style = EixoTipo.rotulo.copy(fontSize = 12.sp),
+                            style = EixoTipo.rotulo,
                             color = if (marcado) c.acao else c.textoFraco,
                             maxLines = 1,
                         )
@@ -281,22 +283,21 @@ fun ViagemFormTela(viagemId: String?, aoVoltar: () -> Unit) {
         usuarios.filter { it.perfil == Perfil.MOTORISTA && it.ativo }
     }
 
-    var caminhaoSelecionado by remember { mutableStateOf(caminhoes.firstOrNull { it.id == existente?.caminhaoId }) }
-    var motoristaSelecionado by remember { mutableStateOf(motoristas.firstOrNull { it.id == existente?.motoristaId }) }
-    var cargaSelecionada by remember { mutableStateOf(cargas.firstOrNull { it.id == existente?.cargaId }) }
+    // Guarda só os ids: sobrevive a girar a tela.
+    var caminhaoId by rememberSaveable { mutableStateOf(existente?.caminhaoId) }
+    var motoristaId by rememberSaveable { mutableStateOf(existente?.motoristaId) }
+    var cargaId by rememberSaveable { mutableStateOf(existente?.cargaId) }
     var origem by rememberSaveable { mutableStateOf(existente?.origem ?: "") }
     var destino by rememberSaveable { mutableStateOf(existente?.destino ?: "") }
-    var saidaPrevista by remember { mutableStateOf(existente?.saidaPrevista ?: LocalDateTime.now().plusHours(2)) }
+    var saidaPrevista by rememberSaveable { mutableStateOf(existente?.saidaPrevista ?: LocalDateTime.now().plusHours(2)) }
     var observacao by rememberSaveable { mutableStateOf(existente?.observacao ?: "") }
 
     var tentouSalvar by rememberSaveable { mutableStateOf(false) }
     var confirmarExclusao by rememberSaveable { mutableStateOf(false) }
 
-    val erroCaminhao = if (caminhaoSelecionado == null) "Escolha o caminhão." else null
-    val erroMotorista = if (motoristaSelecionado == null) "Escolha o motorista." else null
-    val erroOrigem = if (origem.isBlank()) "Informe a origem da viagem." else null
-    val erroDestino = if (destino.isBlank()) "Informe o destino da viagem." else null
-    val valido = listOf(erroCaminhao, erroMotorista, erroOrigem, erroDestino).all { it == null }
+    val caminhaoSelecionado = caminhoes.firstOrNull { it.id == caminhaoId }
+    val motoristaSelecionado = motoristas.firstOrNull { it.id == motoristaId }
+    val cargaSelecionada = cargas.firstOrNull { it.id == cargaId }
 
     val numeroViagem = existente?.numero ?: remember { Dados.proximoNumeroViagem() }
 
@@ -306,6 +307,24 @@ fun ViagemFormTela(viagemId: String?, aoVoltar: () -> Unit) {
     val motoristasEmViagemIds = remember(viagens) {
         viagens.filter { it.status == StatusViagem.EM_ANDAMENTO && it.id != existente?.id }.map { it.motoristaId }.toSet()
     }
+
+    // Viagem já em andamento não pode passar para caminhão ou motorista que está em outra viagem.
+    val emAndamento = existente?.status == StatusViagem.EM_ANDAMENTO
+    val erroCaminhao = when {
+        caminhaoSelecionado == null -> "Escolha o caminhão."
+        emAndamento && caminhaoSelecionado.id in caminhoesEmViagemIds ->
+            "Este caminhão já está em outra viagem em andamento. Escolha outro."
+        else -> null
+    }
+    val erroMotorista = when {
+        motoristaSelecionado == null -> "Escolha o motorista."
+        emAndamento && motoristaSelecionado.id in motoristasEmViagemIds ->
+            "Este motorista já está em outra viagem em andamento. Escolha outro."
+        else -> null
+    }
+    val erroOrigem = if (cidadeDe(origem).isBlank()) "Escolha a cidade de origem." else null
+    val erroDestino = if (cidadeDe(destino).isBlank()) "Escolha a cidade de destino." else null
+    val valido = listOf(erroCaminhao, erroMotorista, erroOrigem, erroDestino).all { it == null }
 
     fun salvar() {
         tentouSalvar = true
@@ -354,7 +373,7 @@ fun ViagemFormTela(viagemId: String?, aoVoltar: () -> Unit) {
             rotulo = "Caminhão",
             opcoes = caminhoes,
             selecionado = caminhaoSelecionado,
-            aoSelecionar = { caminhaoSelecionado = it },
+            aoSelecionar = { caminhaoId = it.id },
             textoDe = { "${it.placa} - ${it.modelo}" },
             detalheDe = { c ->
                 val statusCam = if (caminhoesEmViagemIds.contains(c.id)) "em viagem" else "disponível"
@@ -367,7 +386,7 @@ fun ViagemFormTela(viagemId: String?, aoVoltar: () -> Unit) {
             rotulo = "Motorista",
             opcoes = motoristas,
             selecionado = motoristaSelecionado,
-            aoSelecionar = { motoristaSelecionado = it },
+            aoSelecionar = { motoristaId = it.id },
             textoDe = { it.nome },
             detalheDe = { u ->
                 val cnh = u.motorista?.categoriaCnh ?: ""
@@ -381,36 +400,26 @@ fun ViagemFormTela(viagemId: String?, aoVoltar: () -> Unit) {
             rotulo = "Carga",
             opcoes = listOf<Carga?>(null) + cargas,
             selecionado = cargaSelecionada,
-            aoSelecionar = { cargaSelecionada = it },
+            aoSelecionar = { cargaId = it?.id },
             textoDe = { it?.descricao ?: "Nenhuma (sem carga)" },
             detalheDe = { c -> c?.let { "${it.cliente} · ${formatarKm(it.pesoKg)} kg" } },
             placeholder = "Selecione uma carga (opcional)",
             dica = "OPCIONAL",
         )
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(EixoEspaco.s2),
-        ) {
-            EixoCampo(
-                valor = origem,
-                aoMudar = { origem = it },
-                rotulo = "Origem",
-                placeholder = "Goiânia/GO",
-                modifier = Modifier.weight(1f),
-                erro = if (tentouSalvar) erroOrigem else null,
-                teclado = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
-            )
-            EixoCampo(
-                valor = destino,
-                aoMudar = { destino = it },
-                rotulo = "Destino",
-                placeholder = "Cuiabá/MT",
-                modifier = Modifier.weight(1f),
-                erro = if (tentouSalvar) erroDestino else null,
-                teclado = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
-            )
-        }
+        // UF e cidade vêm da API do IBGE; sem internet, viram texto livre "Cidade/UF".
+        CampoCidade(
+            rotulo = "Origem",
+            valor = origem,
+            aoMudar = { origem = it },
+            erro = if (tentouSalvar) erroOrigem else null,
+        )
+        CampoCidade(
+            rotulo = "Destino",
+            valor = destino,
+            aoMudar = { destino = it },
+            erro = if (tentouSalvar) erroDestino else null,
+        )
 
         EixoCampoDataHora(
             rotulo = "Saída prevista",
@@ -493,6 +502,9 @@ fun ViagemDetalheTela(
 
     var mostrarDialogoIniciar by rememberSaveable { mutableStateOf(false) }
     var mostrarDialogoFinalizar by rememberSaveable { mutableStateOf(false) }
+    // KM digitado no diálogo de iniciar/finalizar (só dígitos, como todo campo de KM).
+    var kmDialogo by rememberSaveable { mutableStateOf("") }
+    var tentouConfirmarKm by rememberSaveable { mutableStateOf(false) }
 
     val kmInicialSugestao = remember(viagem, caminhao) {
         Dados.ultimoKm(viagem.caminhaoId) ?: caminhao?.kmAtual ?: 0L
@@ -502,6 +514,32 @@ fun ViagemDetalheTela(
         val maxAbast = abasts.maxOfOrNull { it.km }
         val maxKm = listOfNotNull(maxAbast, caminhao?.kmAtual, viagem.kmInicial).maxOrNull() ?: 0L
         maxKm
+    }
+    // O KM final não pode ficar abaixo do KM inicial nem do último abastecimento da viagem.
+    val kmMinimoFinal = listOfNotNull(viagem.kmInicial, abasts.maxOfOrNull { it.km }).maxOrNull() ?: 0L
+
+    val kmDigitado = digitosParaKm(kmDialogo)
+    val erroKmInicial = when {
+        kmDigitado == null || kmDigitado <= 0L -> "Informe o KM que aparece no tacógrafo."
+        kmDigitado < kmInicialSugestao ->
+            "O KM não pode ser menor que o último registrado (${formatarKm(kmInicialSugestao)} km). Confira o tacógrafo."
+        else -> null
+    }
+    val erroKmFinal = when {
+        kmDigitado == null || kmDigitado <= 0L -> "Informe o KM que aparece no tacógrafo."
+        kmDigitado < kmMinimoFinal ->
+            "O KM final não pode ser menor que ${formatarKm(kmMinimoFinal)} km (KM inicial ou último abastecimento)."
+        else -> null
+    }
+
+    // Um caminhão ou motorista não pode ter duas viagens em andamento ao mesmo tempo.
+    val conflito = viagens.firstOrNull {
+        it.id != viagem.id && it.status == StatusViagem.EM_ANDAMENTO &&
+            (it.caminhaoId == viagem.caminhaoId || it.motoristaId == viagem.motoristaId)
+    }
+    val motivoBloqueioInicio = conflito?.let {
+        val quem = if (it.caminhaoId == viagem.caminhaoId) "O caminhão" else "O motorista"
+        "$quem já está na viagem #${it.numero}. Finalize-a antes de iniciar esta."
     }
 
     // KM Tacógrafo exibido no cabeçalho
@@ -540,7 +578,7 @@ fun ViagemDetalheTela(
                 conteudo = {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(EixoEspaco.s2),
                     ) {
                         EixoPlaca(caminhao?.placa ?: "—", sobreEscuro = true)
                         EixoEtiqueta(
@@ -549,13 +587,13 @@ fun ViagemDetalheTela(
                             pulsando = viagem.status == StatusViagem.EM_ANDAMENTO,
                         )
                     }
-                    Column(Modifier.padding(top = 4.dp)) {
+                    Column(Modifier.padding(top = EixoEspaco.s1)) {
                         Text(
                             "KM ATUAL · TACÓGRAFO",
                             style = EixoTipo.microRotulo,
                             color = Eixo.cores.cabecalhoRotulo,
                         )
-                        Box(Modifier.padding(top = 4.dp)) {
+                        Box(Modifier.padding(top = EixoEspaco.s1)) {
                             EixoOdometro(kmTacografo)
                         }
                     }
@@ -569,12 +607,16 @@ fun ViagemDetalheTela(
                         EixoBotao(
                             "Iniciar viagem",
                             aoClicar = {
+                                kmDialogo = kmInicialSugestao.toString()
+                                tentouConfirmarKm = false
                                 mostrarDialogoIniciar = true
                             },
                             variante = VarianteBotao.Primario,
                             icone = Icons.Outlined.PlayArrow,
                             tamanho = TamanhoBotao.Grande,
+                            habilitado = motivoBloqueioInicio == null,
                         )
+                        if (motivoBloqueioInicio != null) EixoNotaRodape(motivoBloqueioInicio)
                     }
                     StatusViagem.EM_ANDAMENTO -> {
                         Row(
@@ -592,6 +634,8 @@ fun ViagemDetalheTela(
                             EixoBotao(
                                 "Finalizar",
                                 aoClicar = {
+                                    kmDialogo = kmFinalSugestao.toString()
+                                    tentouConfirmarKm = false
                                     mostrarDialogoFinalizar = true
                                 },
                                 variante = VarianteBotao.Secundario,
@@ -655,7 +699,7 @@ fun ViagemDetalheTela(
 
         // Carga vinculada
         if (carga != null) {
-            EixoCartao(espacamento = 4.dp) {
+            EixoCartao(espacamento = EixoEspaco.s1) {
                 EixoRotuloSecao("CARGA")
                 EixoLinhaValor("Descrição", carga.descricao)
                 EixoLinhaValor("Cliente", carga.cliente)
@@ -718,47 +762,63 @@ fun ViagemDetalheTela(
         }
     }
 
-    // Diálogo para Iniciar Viagem
+    // Diálogo para Iniciar Viagem: pede o KM inicial, pré-preenchido com o último conhecido.
     if (mostrarDialogoIniciar) {
         EixoDialogoConfirmacao(
             titulo = "Iniciar viagem #${viagem.numero}?",
-            texto = "A viagem passará para o estado 'Em andamento' com o KM inicial registrado (${formatarKm(kmInicialSugestao)} km).",
-            textoConfirmar = "Confirmar início",
+            texto = "Confira o KM no tacógrafo. A viagem passa para \"Em andamento\".",
+            textoConfirmar = "Iniciar viagem",
             aoConfirmar = {
-                Dados.viagens.salvar(
-                    viagem.copy(
-                        status = StatusViagem.EM_ANDAMENTO,
-                        kmInicial = kmInicialSugestao,
-                    ),
-                )
-                if (caminhao != null && kmInicialSugestao > caminhao.kmAtual) {
-                    Dados.caminhoes.salvar(caminhao.copy(kmAtual = kmInicialSugestao))
+                tentouConfirmarKm = true
+                val km = kmDigitado
+                if (erroKmInicial == null && km != null && motivoBloqueioInicio == null) {
+                    Dados.viagens.salvar(viagem.copy(status = StatusViagem.EM_ANDAMENTO, kmInicial = km))
+                    if (caminhao != null && km > caminhao.kmAtual) {
+                        Dados.caminhoes.salvar(caminhao.copy(kmAtual = km))
+                    }
+                    mostrarDialogoIniciar = false
                 }
-                mostrarDialogoIniciar = false
             },
             aoCancelar = { mostrarDialogoIniciar = false },
-        )
+        ) {
+            EixoCampoKm(
+                digitos = kmDialogo,
+                aoMudar = { kmDialogo = it },
+                rotulo = "KM inicial",
+                sugerido = kmInicialSugestao,
+                origemSugestao = "último registro do caminhão",
+                erro = if (tentouConfirmarKm) erroKmInicial else null,
+            )
+        }
     }
 
-    // Diálogo para Finalizar Viagem
+    // Diálogo para Finalizar Viagem: pede o KM final, que não pode ser menor que o inicial.
     if (mostrarDialogoFinalizar) {
         EixoDialogoConfirmacao(
             titulo = "Finalizar viagem #${viagem.numero}?",
-            texto = "A viagem será concluída com o KM final registrado (${formatarKm(kmFinalSugestao)} km). Verifique se todos os abastecimentos foram lançados.",
+            texto = "Confira o KM no tacógrafo e se todos os abastecimentos foram lançados.",
             textoConfirmar = "Finalizar viagem",
             aoConfirmar = {
-                Dados.viagens.salvar(
-                    viagem.copy(
-                        status = StatusViagem.FINALIZADA,
-                        kmFinal = kmFinalSugestao,
-                    ),
-                )
-                if (caminhao != null && kmFinalSugestao > caminhao.kmAtual) {
-                    Dados.caminhoes.salvar(caminhao.copy(kmAtual = kmFinalSugestao))
+                tentouConfirmarKm = true
+                val km = kmDigitado
+                if (erroKmFinal == null && km != null) {
+                    Dados.viagens.salvar(viagem.copy(status = StatusViagem.FINALIZADA, kmFinal = km))
+                    if (caminhao != null && km > caminhao.kmAtual) {
+                        Dados.caminhoes.salvar(caminhao.copy(kmAtual = km))
+                    }
+                    mostrarDialogoFinalizar = false
                 }
-                mostrarDialogoFinalizar = false
             },
             aoCancelar = { mostrarDialogoFinalizar = false },
-        )
+        ) {
+            EixoCampoKm(
+                digitos = kmDialogo,
+                aoMudar = { kmDialogo = it },
+                rotulo = "KM final",
+                sugerido = kmFinalSugestao,
+                origemSugestao = "maior KM conhecido",
+                erro = if (tentouConfirmarKm) erroKmFinal else null,
+            )
+        }
     }
 }

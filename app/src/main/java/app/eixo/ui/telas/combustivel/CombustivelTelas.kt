@@ -168,6 +168,10 @@ fun AbastecimentosTela(
 //  FORMULÁRIO DE ABASTECIMENTO
 // ---------------------------------------------------------------------------
 
+/** Dígitos do último KM conhecido do caminhão, para pré-preencher o campo. */
+private fun kmSugeridoDe(caminhaoId: String?): String =
+    caminhaoId?.let { Dados.ultimoKm(it) }?.toString() ?: ""
+
 /** `viagemId` vem preenchido quando o registro é aberto a partir de uma viagem; pode ser nulo (avulso). */
 @Composable
 fun AbastecimentoFormTela(abastecimentoId: String?, viagemId: String?, aoVoltar: () -> Unit) {
@@ -187,7 +191,10 @@ fun AbastecimentoFormTela(abastecimentoId: String?, viagemId: String?, aoVoltar:
             existente?.motoristaId ?: viagem?.motoristaId ?: usuario?.takeIf { it.perfil == Perfil.MOTORISTA }?.id,
         )
     }
-    var kmDigitos by rememberSaveable { mutableStateOf(existente?.km?.toString() ?: "") }
+    // Novo registro já começa com o último KM conhecido do caminhão; o motorista só ajusta.
+    var kmDigitos by rememberSaveable {
+        mutableStateOf(existente?.km?.toString() ?: kmSugeridoDe(viagem?.caminhaoId))
+    }
     var litrosDigitos by rememberSaveable { mutableStateOf(existente?.litros?.let { decimalParaDigitos(it) } ?: "") }
     var valorDigitos by rememberSaveable { mutableStateOf(existente?.valorTotal?.let { decimalParaDigitos(it) } ?: "") }
     var combustivel by rememberSaveable { mutableStateOf<TipoCombustivel?>(existente?.combustivel ?: TipoCombustivel.DIESEL_S10) }
@@ -196,7 +203,7 @@ fun AbastecimentoFormTela(abastecimentoId: String?, viagemId: String?, aoVoltar:
     var usaArla by rememberSaveable { mutableStateOf<Boolean?>(existente?.let { it.arlaLitros != null } ?: false) }
     var arlaLitrosDigitos by rememberSaveable { mutableStateOf(existente?.arlaLitros?.let { decimalParaDigitos(it) } ?: "") }
     var arlaValorDigitos by rememberSaveable { mutableStateOf(existente?.arlaValor?.let { decimalParaDigitos(it) } ?: "") }
-    var dataHora by remember { mutableStateOf<LocalDateTime?>(existente?.dataHora ?: LocalDateTime.now()) }
+    var dataHora by rememberSaveable { mutableStateOf<LocalDateTime?>(existente?.dataHora ?: LocalDateTime.now()) }
     var tentouSalvar by rememberSaveable { mutableStateOf(false) }
     var confirmarExclusao by rememberSaveable { mutableStateOf(false) }
 
@@ -280,7 +287,10 @@ fun AbastecimentoFormTela(abastecimentoId: String?, viagemId: String?, aoVoltar:
             rotulo = "Caminhão",
             opcoes = caminhoes,
             selecionado = caminhao,
-            aoSelecionar = { caminhaoId = it.id },
+            aoSelecionar = {
+                caminhaoId = it.id
+                if (existente == null) kmDigitos = kmSugeridoDe(it.id)
+            },
             textoDe = { "${it.placa} · ${it.modelo}" },
             erro = if (tentouSalvar) erroCaminhao else null,
         )

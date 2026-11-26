@@ -3,10 +3,14 @@ package app.eixo.ui.telas.acesso
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -26,6 +30,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -55,9 +60,9 @@ import app.eixo.ui.design.EixoTema
 import app.eixo.ui.design.EixoTipo
 
 /*
- * MÓDULO ACESSO — já funciona, para o grupo conseguir navegar desde o primeiro dia.
- * Quem pegar o módulo Acesso: refinar visual e textos conforme a tela "Entrar"
- * do design system, e decidir se os atalhos de demonstração ficam na apresentação.
+ * MÓDULO ACESSO — tela "Entrar" (design 01-login).
+ * Admin entra pelo e-mail, motorista pela matrícula. Os atalhos de demonstração
+ * ficam no pé da tela para a apresentação.
  */
 
 @Composable
@@ -68,28 +73,46 @@ fun LoginTela(aoEntrar: (Usuario) -> Unit, aoAbrirCatalogo: () -> Unit) {
         var login by rememberSaveable { mutableStateOf("") }
         var senha by rememberSaveable { mutableStateOf("") }
         var erro by rememberSaveable { mutableStateOf<String?>(null) }
+        var entrando by remember { mutableStateOf(false) }
 
-        fun entrar() {
-            when (val resultado = Sessao.entrar(login, senha)) {
+        // Com Firebase, a resposta depende da rede: o botão mostra carregando até ela chegar.
+        val aoResultado: (ResultadoLogin) -> Unit = { resultado ->
+            entrando = false
+            when (resultado) {
                 is ResultadoLogin.Sucesso -> { erro = null; aoEntrar(resultado.usuario) }
                 ResultadoLogin.CredenciaisInvalidas -> erro = "E-mail, matrícula ou senha incorretos."
                 ResultadoLogin.AcessoInativo -> erro = "Este acesso foi desativado. Fale com o administrador."
+                is ResultadoLogin.Falha -> erro = resultado.mensagem
             }
         }
 
-        Box(
+        fun entrar() {
+            if (entrando) return
+            entrando = true
+            Sessao.entrar(login, senha, aoResultado)
+        }
+
+        fun entrarComo(perfil: Perfil) {
+            if (entrando) return
+            entrando = true
+            Sessao.entrarComo(perfil, aoResultado)
+        }
+
+        BoxWithConstraints(
             Modifier
                 .fillMaxSize()
                 .background(c.cabecalho)
-                .background(Brush.radialGradient(listOf(Color(0x4D2D5BE3), Color.Transparent), radius = 1400f)),
+                .background(Brush.radialGradient(listOf(c.marcaBrilho, Color.Transparent), radius = 1400f))
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .imePadding(),
         ) {
+            // Altura mínima = tela: o espaçador com peso empurra a demonstração para o pé.
             Column(
                 Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding()
-                    .navigationBarsPadding()
-                    .imePadding()
+                    .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
+                    .heightIn(min = maxHeight)
                     .padding(horizontal = EixoEspaco.s5, vertical = EixoEspaco.s6),
                 verticalArrangement = Arrangement.spacedBy(EixoEspaco.s4),
             ) {
@@ -98,9 +121,9 @@ fun LoginTela(aoEntrar: (Usuario) -> Unit, aoAbrirCatalogo: () -> Unit) {
                     Modifier
                         .size(56.dp)
                         .clip(EixoRaio.lg)
-                        .background(Brush.linearGradient(listOf(Color(0xFF3D6BF0), Color(0xFF12275C)))),
+                        .background(Brush.linearGradient(c.marcaDegrade)),
                     contentAlignment = Alignment.Center,
-                ) { Icon(Icons.Outlined.LocalShipping, contentDescription = null, tint = Color.White, modifier = Modifier.size(28.dp)) }
+                ) { Icon(Icons.Outlined.LocalShipping, contentDescription = null, tint = c.sobreMarca, modifier = Modifier.size(28.dp)) }
                 Column {
                     Text("Eixo", style = EixoTipo.display.copy(fontSize = 40.sp, lineHeight = 42.sp), color = c.texto)
                     Text("Gestão de frota", style = EixoTipo.corpo, color = c.textoFraco)
@@ -120,23 +143,28 @@ fun LoginTela(aoEntrar: (Usuario) -> Unit, aoAbrirCatalogo: () -> Unit) {
                     valor = senha, aoMudar = { senha = it; erro = null },
                     acoesTeclado = KeyboardActions(onDone = { entrar() }),
                 )
-                EixoBotao("Entrar", aoClicar = ::entrar, tamanho = TamanhoBotao.Grande)
+                EixoBotao("Entrar", aoClicar = ::entrar, tamanho = TamanhoBotao.Grande, carregando = entrando)
                 EixoAlerta(
                     titulo = "Esqueceu a senha?",
-                    descricao = "Fale com o administrador da empresa. Não existe cadastro pelo próprio app.",
+                    descricao = "Fale com o administrador da empresa.",
                     icone = Icons.Outlined.Key,
                 )
 
-                Spacer(Modifier.height(EixoEspaco.s4))
+                // Atalhos de demonstração ficam no pé da tela, longe do fluxo real de login.
+                Spacer(Modifier.weight(1f))
                 EixoRotuloSecao("Modo demonstração · senha ${Sessao.SENHA_DEMO}")
-                EixoBotao(
-                    "Entrar como administrador", variante = VarianteBotao.Secundario, tamanho = TamanhoBotao.Pequeno,
-                    aoClicar = { Sessao.entrarComo(Perfil.ADMIN)?.let(aoEntrar) },
-                )
-                EixoBotao(
-                    "Entrar como motorista", variante = VarianteBotao.Secundario, tamanho = TamanhoBotao.Pequeno,
-                    aoClicar = { Sessao.entrarComo(Perfil.MOTORISTA)?.let(aoEntrar) },
-                )
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(EixoEspaco.s2)) {
+                    EixoBotao(
+                        "Administrador", variante = VarianteBotao.Secundario, tamanho = TamanhoBotao.Pequeno,
+                        modifier = Modifier.weight(1f),
+                        aoClicar = { entrarComo(Perfil.ADMIN) },
+                    )
+                    EixoBotao(
+                        "Motorista", variante = VarianteBotao.Secundario, tamanho = TamanhoBotao.Pequeno,
+                        modifier = Modifier.weight(1f),
+                        aoClicar = { entrarComo(Perfil.MOTORISTA) },
+                    )
+                }
                 EixoBotao(
                     "Catálogo de componentes", variante = VarianteBotao.Fantasma, tamanho = TamanhoBotao.Pequeno,
                     icone = Icons.Outlined.Widgets, aoClicar = aoAbrirCatalogo,
