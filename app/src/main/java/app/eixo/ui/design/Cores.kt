@@ -40,6 +40,12 @@ data class EixoCores(
     val cabecalhoTextoFraco: Color get() = Color(0xFFC7D2E8)
     val cabecalhoRotulo: Color get() = Color(0xFF7E93C4)
     val cabecalhoBorda: Color get() = Color(0x29FFFFFF)
+
+    // Selo da marca (login) e avatar (conta): o mesmo degradê nos dois temas.
+    val marcaDegrade: List<Color> get() = listOf(Color(0xFF3D6BF0), Color(0xFF12275C))
+    val sobreMarca: Color get() = Color(0xFFFFFFFF)
+    /** Brilho azul atrás do login. */
+    val marcaBrilho: Color get() = Color(0x4D2D5BE3)
 }
 
 val EixoCoresClaras = EixoCores(

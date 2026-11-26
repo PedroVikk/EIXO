@@ -254,6 +254,9 @@ fun EixoEstadoVazio(
 /**
  * Confirmação antes de ação irreversível (excluir, cancelar viagem).
  * O botão diz exatamente o que acontece: "Excluir carga", não "OK".
+ *
+ * @param conteudo campo opcional abaixo do texto (ex.: KM ao iniciar a viagem). Quem chama
+ * valida em `aoConfirmar` e só fecha o diálogo quando o valor estiver certo.
  */
 @Composable
 fun EixoDialogoConfirmacao(
@@ -263,6 +266,7 @@ fun EixoDialogoConfirmacao(
     aoConfirmar: () -> Unit,
     aoCancelar: () -> Unit,
     perigoso: Boolean = false,
+    conteudo: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     val c = Eixo.cores
     AlertDialog(
@@ -270,7 +274,12 @@ fun EixoDialogoConfirmacao(
         containerColor = c.superficie,
         shape = EixoRaio.xl,
         title = { Text(titulo, style = EixoTipo.tituloSecao, color = c.texto) },
-        text = { Text(texto, style = EixoTipo.corpo, color = c.textoFraco) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(EixoEspaco.s4)) {
+                Text(texto, style = EixoTipo.corpo, color = c.textoFraco)
+                conteudo?.invoke(this)
+            }
+        },
         confirmButton = {
             EixoBotao(
                 textoConfirmar, aoClicar = aoConfirmar, larguraTotal = false, tamanho = TamanhoBotao.Pequeno,
