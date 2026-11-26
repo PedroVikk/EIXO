@@ -51,13 +51,12 @@ Tabelas: `usuarios`, `caminhoes`, `cargas`, `viagens`, `abastecimentos` (`dados/
 
 ### Firebase (login)
 
-O código do login com Firebase já está pronto; falta só o arquivo do projeto:
+O login usa o projeto Firebase **`appeixo`**, já configurado em `app/google-services.json`, com o
+provedor **E-mail/senha** ativo. Os usuários ficam em *Authentication → Users* no
+[console do Firebase](https://console.firebase.google.com).
 
-1. No [console do Firebase](https://console.firebase.google.com), crie o projeto e adicione um app
-   Android com o pacote **`app.eixo.faculdade`**.
-2. Baixe o `google-services.json` e coloque em `app/google-services.json`.
-3. Em *Authentication → Sign-in method*, ative **E-mail/senha**.
-4. Sincronize o Gradle e rode. O plugin `google-services` só é aplicado quando o arquivo existe.
+Sem esse arquivo, o plugin `google-services` não é aplicado e o app entra com a senha de
+demonstração — útil para rodar sem internet.
 
 Com o Firebase ligado, o e-mail do administrador é o próprio login e o do motorista é a
 matrícula + `@eixo.app` (`1001` → `1001@eixo.app`). Quem existe no app mas ainda não tem conta

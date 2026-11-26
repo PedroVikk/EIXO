@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "383233296957",
+    "project_id": "appeixo",
+    "storage_bucket": "appeixo.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:383233296957:android:419e0187ab542666523854",
+        "android_client_info": {
+          "package_name": "app.eixo.faculdade"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAvJy97V2UG69sXZYjSj4jJceUDmIcH_wA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
