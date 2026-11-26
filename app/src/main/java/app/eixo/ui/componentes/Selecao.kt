@@ -14,8 +14,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.UnfoldMore
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -33,6 +35,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -41,6 +44,7 @@ import app.eixo.ui.design.EixoAlvo
 import app.eixo.ui.design.EixoEspaco
 import app.eixo.ui.design.EixoRaio
 import app.eixo.ui.design.EixoTipo
+import java.text.Normalizer
 
 /**
  * Seletor de uma opção numa lista (motorista, caminhão, carga, combustível...).
@@ -58,6 +62,8 @@ import app.eixo.ui.design.EixoTipo
  *     detalheDe = { "CNH ${it.categoriaCnh}" },
  * )
  * ```
+ * Para lista longa (ex.: cidades), passe `buscavel = true`: a folha ganha um campo de busca
+ * que ignora maiúscula e acento.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,6 +79,7 @@ fun <T> EixoSeletor(
     dica: String? = null,
     erro: String? = null,
     habilitado: Boolean = true,
+    buscavel: Boolean = false,
 ) {
     val c = Eixo.cores
     var aberto by rememberSaveable { mutableStateOf(false) }
@@ -110,15 +117,33 @@ fun <T> EixoSeletor(
             containerColor = c.superficie,
             shape = EixoRaio.xl,
         ) {
+            var busca by rememberSaveable { mutableStateOf("") }
+            val termo = semAcento(busca.trim())
+            val visiveis = if (termo.isEmpty()) opcoes else opcoes.filter { semAcento(textoDe(it)).contains(termo) }
             Column(Modifier.padding(horizontal = EixoEspaco.margemTela).navigationBarsPadding()) {
                 Text(rotulo, style = EixoTipo.tituloSecao, color = c.texto)
                 Text(
-                    if (opcoes.isEmpty()) "Nenhuma opção cadastrada." else "${opcoes.size} opções",
+                    when {
+                        opcoes.isEmpty() -> "Nenhuma opção cadastrada."
+                        termo.isNotEmpty() -> "${visiveis.size} de ${opcoes.size} opções"
+                        else -> "${opcoes.size} opções"
+                    },
                     style = EixoTipo.apoio, color = c.textoFraco,
                     modifier = Modifier.padding(top = 2.dp, bottom = EixoEspaco.s3),
                 )
+                if (buscavel) {
+                    EixoCampo(
+                        valor = busca,
+                        aoMudar = { busca = it },
+                        rotulo = "Buscar",
+                        placeholder = "Digite parte do nome",
+                        teclado = KeyboardOptions(imeAction = ImeAction.Search),
+                        iconeFinal = { Icon(Icons.Outlined.Search, contentDescription = null, tint = c.textoTenue) },
+                        modifier = Modifier.padding(bottom = EixoEspaco.s3),
+                    )
+                }
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(EixoEspaco.s2), modifier = Modifier.padding(bottom = EixoEspaco.s4)) {
-                    items(opcoes) { opcao ->
+                    items(visiveis) { opcao ->
                         val marcado = opcao == selecionado
                         Row(
                             modifier = Modifier
@@ -149,6 +174,12 @@ fun <T> EixoSeletor(
         }
     }
 }
+
+/** Minúsculas e sem acento, para a busca achar "Goiânia" digitando "goiania". */
+private fun semAcento(texto: String): String =
+    Normalizer.normalize(texto, Normalizer.Form.NFD).replace(MARCAS_DE_ACENTO, "").lowercase()
+
+private val MARCAS_DE_ACENTO = Regex("""\p{Mn}+""")
 
 /**
  * Escolha entre poucas opções lado a lado (2 ou 3). Grande o bastante para o polegar.

@@ -322,8 +322,8 @@ fun ViagemFormTela(viagemId: String?, aoVoltar: () -> Unit) {
             "Este motorista já está em outra viagem em andamento. Escolha outro."
         else -> null
     }
-    val erroOrigem = if (origem.isBlank()) "Informe a origem da viagem." else null
-    val erroDestino = if (destino.isBlank()) "Informe o destino da viagem." else null
+    val erroOrigem = if (cidadeDe(origem).isBlank()) "Escolha a cidade de origem." else null
+    val erroDestino = if (cidadeDe(destino).isBlank()) "Escolha a cidade de destino." else null
     val valido = listOf(erroCaminhao, erroMotorista, erroOrigem, erroDestino).all { it == null }
 
     fun salvar() {
@@ -407,29 +407,19 @@ fun ViagemFormTela(viagemId: String?, aoVoltar: () -> Unit) {
             dica = "OPCIONAL",
         )
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(EixoEspaco.s2),
-        ) {
-            EixoCampo(
-                valor = origem,
-                aoMudar = { origem = it },
-                rotulo = "Origem",
-                placeholder = "Goiânia/GO",
-                modifier = Modifier.weight(1f),
-                erro = if (tentouSalvar) erroOrigem else null,
-                teclado = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
-            )
-            EixoCampo(
-                valor = destino,
-                aoMudar = { destino = it },
-                rotulo = "Destino",
-                placeholder = "Cuiabá/MT",
-                modifier = Modifier.weight(1f),
-                erro = if (tentouSalvar) erroDestino else null,
-                teclado = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
-            )
-        }
+        // UF e cidade vêm da API do IBGE; sem internet, viram texto livre "Cidade/UF".
+        CampoCidade(
+            rotulo = "Origem",
+            valor = origem,
+            aoMudar = { origem = it },
+            erro = if (tentouSalvar) erroOrigem else null,
+        )
+        CampoCidade(
+            rotulo = "Destino",
+            valor = destino,
+            aoMudar = { destino = it },
+            erro = if (tentouSalvar) erroDestino else null,
+        )
 
         EixoCampoDataHora(
             rotulo = "Saída prevista",
