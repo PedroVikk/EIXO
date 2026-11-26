@@ -1,9 +1,13 @@
 # Eixo — app de gestão de frota (versão faculdade)
 
 Aplicativo Android em **Kotlin + Jetpack Compose** para controle de viagens, cargas e
-abastecimento de uma frota de caminhões. Esta versão é **só front-end**: os dados vivem
-em memória e voltam ao estado inicial quando o app reinicia. O Firebase entra depois,
-sem precisar mudar as telas.
+abastecimento de uma frota de caminhões.
+
+- **Banco local (Room):** os cadastros ficam gravados no aparelho e sobrevivem a fechar o app.
+- **Login (Firebase Authentication):** e-mail e senha conferidos no Firebase, quando o projeto
+  está configurado (veja *Firebase* abaixo). Sem ele, vale a senha de demonstração.
+- **Requisição HTTP (Retrofit + OkHttp):** UF e cidade de origem e destino da viagem vêm da API
+  pública de localidades do IBGE.
 
 > Escopo, critérios de aceite e cronograma: [`docs/escopo.md`](docs/escopo.md)
 > Referência de cada componente: [`docs/componentes.md`](docs/componentes.md)
@@ -17,8 +21,11 @@ sem precisar mudar as telas.
 **Terminal:**
 ```bash
 ./gradlew assembleDebug      # gera app/build/outputs/apk/debug/app-debug.apk
-./gradlew testDebugUnitTest  # roda os testes das regras de cálculo
+./gradlew testDebugUnitTest  # roda os testes das regras de cálculo, do login e do repositório
 ```
+
+O app precisa de internet para o login com Firebase e para a lista de cidades. Sem rede, a
+origem e o destino viram campo de texto livre no formato `Cidade/UF`.
 
 ### Entrar no app
 
@@ -30,8 +37,32 @@ Senha de todo mundo: **`123456`**
 | Motorista | `1001` (João), `1002`, `1003`, `1004` | Viagens, Combustível, Conta |
 | Motorista inativo | `1005` | é barrado no login |
 
-A tela de login também tem **atalhos de demonstração** ("Entrar como administrador / motorista")
+A tela de login também tem **atalhos de demonstração** ("Administrador" / "Motorista")
 e o botão **Catálogo de componentes** — abra o catálogo antes de construir qualquer tela.
+
+### Banco local (Room)
+
+Na primeira abertura o banco nasce com os dados de exemplo (`dados/Semente.kt`). Depois disso,
+tudo que for cadastrado, editado ou excluído fica gravado. Para voltar aos dados de exemplo:
+*Configurações do Android → Apps → Eixo → Armazenamento → Limpar dados*.
+
+Ver as tabelas com o app rodando: *View → Tool Windows → App Inspection → Database Inspector*.
+Tabelas: `usuarios`, `caminhoes`, `cargas`, `viagens`, `abastecimentos` (`dados/Banco.kt`).
+
+### Firebase (login)
+
+O código do login com Firebase já está pronto; falta só o arquivo do projeto:
+
+1. No [console do Firebase](https://console.firebase.google.com), crie o projeto e adicione um app
+   Android com o pacote **`app.eixo.faculdade`**.
+2. Baixe o `google-services.json` e coloque em `app/google-services.json`.
+3. Em *Authentication → Sign-in method*, ative **E-mail/senha**.
+4. Sincronize o Gradle e rode. O plugin `google-services` só é aplicado quando o arquivo existe.
+
+Com o Firebase ligado, o e-mail do administrador é o próprio login e o do motorista é a
+matrícula + `@eixo.app` (`1001` → `1001@eixo.app`). Quem existe no app mas ainda não tem conta
+no Firebase ganha a conta no primeiro acesso, com a senha inicial `123456` — não é preciso criar
+usuário no console. Perfil e situação (ativo/inativo) continuam no banco local.
 
 ---
 
@@ -42,7 +73,7 @@ e o botão **Catálogo de componentes** — abra o catálogo antes de construir 
 | Design system (cores, tipografia, medidas, tema claro/escuro) | `ui/design/` | ✅ pronto |
 | 33 componentes reutilizáveis | `ui/componentes/` | ✅ pronto |
 | Catálogo vivo de componentes | `ui/catalogo/` | ✅ pronto |
-| Dados falsos com repositórios | `dados/` | ✅ pronto |
+| Banco local (Room), login (Firebase) e API do IBGE (Retrofit) | `dados/` | ✅ pronto |
 | Cálculos do painel (consumo, custo/km) | `dominio/` | ✅ pronto e testado |
 | Navegação e barra inferior por perfil | `ui/navegacao/` | ✅ pronto |
 | Login e Conta | `ui/telas/acesso/` | ✅ pronto |
@@ -52,8 +83,8 @@ e o botão **Catálogo de componentes** — abra o catálogo antes de construir 
 | Combustível (lista, detalhe, formulário) | `ui/telas/combustivel/` | ✅ pronto |
 | Painel | `ui/telas/painel/` | ✅ pronto |
 
-Todas as telas do escopo estão construídas. A assinatura de cada tela e a navegação não mudam
-quando o Firebase entrar — só a camada `dados/`.
+Todas as telas do escopo estão construídas. As telas só conhecem `Dados` e `Sessao`: trocar onde
+os dados ficam guardados mexe apenas na camada `dados/`.
 
 ---
 
@@ -132,8 +163,10 @@ fun ViagensTela(barra: @Composable () -> Unit, aoNova: () -> Unit, aoAbrir: (Str
 
 ```
 app/src/main/java/app/eixo/
+├── EixoAplicacao.kt  Abre o banco e prepara o login ao iniciar o app
 ├── MainActivity.kt
-├── dados/          Modelos, repositórios em memória, dados de exemplo, sessão de login
+├── dados/          Modelos (tabelas), banco Room, repositórios, dados de exemplo, login
+│   └── remoto/     API de localidades do IBGE (Retrofit)
 ├── dominio/        Regras de cálculo (consumo, classificação, indicadores do painel)
 ├── util/           Formatação de número, dinheiro e data
 └── ui/

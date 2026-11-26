@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Entrega** | Aplicativo Android, só front-end, dados em memória |
-| **Tecnologia** | Kotlin, Jetpack Compose, Material 3, Navigation Compose |
+| **Entrega** | Aplicativo Android com banco local (Room), login (Firebase) e API do IBGE (Retrofit) |
+| **Tecnologia** | Kotlin, Jetpack Compose, Material 3, Navigation Compose, Room, Retrofit + OkHttp, Firebase Auth |
 | **Prazo** | menos de 1 mês |
 | **Base visual** | Design system Eixo (21 telas) — a fonte de verdade de como cada tela deve parecer |
 
@@ -102,10 +102,9 @@ Existem no MVP comercial e **não** fazem parte do trabalho:
 
 - Fotos (cupom, tacógrafo, veículo no posto) e check-in/check-out com foto
 - Identificação do posto pela localização
-- Funcionamento offline e fila de envio
+- Sincronização entre aparelhos e fila de envio (os dados ficam só no aparelho)
 - Senha temporária e troca obrigatória no primeiro acesso
 - Relatório da viagem em PDF
-- Banco de dados real — o Firebase entra depois, trocando só a camada `dados/`
 
 ---
 
