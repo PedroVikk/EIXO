@@ -30,6 +30,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -72,13 +73,29 @@ fun LoginTela(aoEntrar: (Usuario) -> Unit, aoAbrirCatalogo: () -> Unit) {
         var login by rememberSaveable { mutableStateOf("") }
         var senha by rememberSaveable { mutableStateOf("") }
         var erro by rememberSaveable { mutableStateOf<String?>(null) }
+        var entrando by remember { mutableStateOf(false) }
 
-        fun entrar() {
-            when (val resultado = Sessao.entrar(login, senha)) {
+        // Com Firebase, a resposta depende da rede: o botão mostra carregando até ela chegar.
+        val aoResultado: (ResultadoLogin) -> Unit = { resultado ->
+            entrando = false
+            when (resultado) {
                 is ResultadoLogin.Sucesso -> { erro = null; aoEntrar(resultado.usuario) }
                 ResultadoLogin.CredenciaisInvalidas -> erro = "E-mail, matrícula ou senha incorretos."
                 ResultadoLogin.AcessoInativo -> erro = "Este acesso foi desativado. Fale com o administrador."
+                is ResultadoLogin.Falha -> erro = resultado.mensagem
             }
+        }
+
+        fun entrar() {
+            if (entrando) return
+            entrando = true
+            Sessao.entrar(login, senha, aoResultado)
+        }
+
+        fun entrarComo(perfil: Perfil) {
+            if (entrando) return
+            entrando = true
+            Sessao.entrarComo(perfil, aoResultado)
         }
 
         BoxWithConstraints(
@@ -126,7 +143,7 @@ fun LoginTela(aoEntrar: (Usuario) -> Unit, aoAbrirCatalogo: () -> Unit) {
                     valor = senha, aoMudar = { senha = it; erro = null },
                     acoesTeclado = KeyboardActions(onDone = { entrar() }),
                 )
-                EixoBotao("Entrar", aoClicar = ::entrar, tamanho = TamanhoBotao.Grande)
+                EixoBotao("Entrar", aoClicar = ::entrar, tamanho = TamanhoBotao.Grande, carregando = entrando)
                 EixoAlerta(
                     titulo = "Esqueceu a senha?",
                     descricao = "Fale com o administrador da empresa.",
@@ -140,12 +157,12 @@ fun LoginTela(aoEntrar: (Usuario) -> Unit, aoAbrirCatalogo: () -> Unit) {
                     EixoBotao(
                         "Administrador", variante = VarianteBotao.Secundario, tamanho = TamanhoBotao.Pequeno,
                         modifier = Modifier.weight(1f),
-                        aoClicar = { Sessao.entrarComo(Perfil.ADMIN)?.let(aoEntrar) },
+                        aoClicar = { entrarComo(Perfil.ADMIN) },
                     )
                     EixoBotao(
                         "Motorista", variante = VarianteBotao.Secundario, tamanho = TamanhoBotao.Pequeno,
                         modifier = Modifier.weight(1f),
-                        aoClicar = { Sessao.entrarComo(Perfil.MOTORISTA)?.let(aoEntrar) },
+                        aoClicar = { entrarComo(Perfil.MOTORISTA) },
                     )
                 }
                 EixoBotao(
