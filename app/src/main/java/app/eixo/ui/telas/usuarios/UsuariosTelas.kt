@@ -2,7 +2,6 @@ package app.eixo.ui.telas.usuarios
 
 import android.content.res.Configuration
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -29,11 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -44,6 +39,7 @@ import app.eixo.dados.Perfil
 import app.eixo.dados.Usuario
 import app.eixo.ui.componentes.EixoAlerta
 import app.eixo.ui.componentes.EixoBotao
+import app.eixo.ui.componentes.EixoBotaoCabecalho
 import app.eixo.ui.componentes.EixoCabecalho
 import app.eixo.ui.componentes.EixoCampo
 import app.eixo.ui.componentes.EixoCampoData
@@ -212,7 +208,6 @@ fun UsuariosTela(
  */
 @Composable
 fun UsuarioFormTela(usuarioId: String?, aoVoltar: () -> Unit) {
-    val c = Eixo.cores
     val usuarios by Dados.usuarios.itens.collectAsState()
     val viagens by Dados.viagens.itens.collectAsState()
     val abastecimentos by Dados.abastecimentos.itens.collectAsState()
@@ -266,13 +261,12 @@ fun UsuarioFormTela(usuarioId: String?, aoVoltar: () -> Unit) {
     // Validações
     val erroNome = if (nome.isBlank()) "Informe o nome completo." else null
     val loginLimpo = login.trim()
-    val eEmailValidoCom = android.util.Patterns.EMAIL_ADDRESS.matcher(loginLimpo).matches() &&
-        loginLimpo.endsWith(".com", ignoreCase = true)
+    val eEmailValido = android.util.Patterns.EMAIL_ADDRESS.matcher(loginLimpo).matches()
 
     val erroLogin = when {
         loginLimpo.isBlank() -> if (perfil == Perfil.MOTORISTA) "Informe a matrícula." else "Informe o e-mail."
-        perfil == Perfil.ADMIN && !eEmailValidoCom ->
-            "Informe um e-mail válido, como nome@dominio.com."
+        perfil == Perfil.ADMIN && !eEmailValido ->
+            "Informe um e-mail válido, como nome@empresa.com.br."
         usuarios.any { it.id != existente?.id && it.login.equals(loginLimpo, ignoreCase = true) } ->
             "Este login/e-mail já está cadastrado."
         else -> null
@@ -323,29 +317,7 @@ fun UsuarioFormTela(usuarioId: String?, aoVoltar: () -> Unit) {
                 aoVoltar = aoVoltar,
                 acoes = {
                     if (existente != null && !possuiVinculo) {
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(EixoRaio.sm)
-                                .background(c.critico)
-                                .clickable(role = Role.Button) {
-                                    val aindaExiste = Dados.usuarios.buscar(existente.id) != null
-                                    val aindaVinculado = viagens.any { it.motoristaId == existente.id } ||
-                                        abastecimentos.any { it.motoristaId == existente.id }
-                                    if (aindaExiste && !aindaVinculado) {
-                                        confirmarExclusao = true
-                                    }
-                                }
-                                .semantics { contentDescription = "Excluir pessoa" },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.DeleteOutline,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(19.dp),
-                            )
-                        }
+                        EixoBotaoCabecalho(Icons.Outlined.DeleteOutline, "Excluir pessoa") { confirmarExclusao = true }
                     }
                 },
             )
@@ -355,7 +327,6 @@ fun UsuarioFormTela(usuarioId: String?, aoVoltar: () -> Unit) {
                 EixoBotao(
                     texto = if (existente == null) "Cadastrar pessoa" else "Salvar alterações",
                     aoClicar = ::salvar,
-                    habilitado = valido,
                 )
                 if (tentouSalvar && !valido) {
                     EixoNotaRodape("Preencha todos os campos obrigatórios")
@@ -410,6 +381,7 @@ fun UsuarioFormTela(usuarioId: String?, aoVoltar: () -> Unit) {
             ),
         )
 
+        // Campos de motorista só aparecem (e só são exigidos) quando o perfil é Motorista.
         if (perfil == Perfil.MOTORISTA) {
             EixoRotuloSecao("Dados do motorista")
 
@@ -476,20 +448,11 @@ fun UsuarioFormTela(usuarioId: String?, aoVoltar: () -> Unit) {
             textoConfirmar = "Excluir pessoa",
             perigoso = true,
             aoConfirmar = {
-                val aindaExiste = Dados.usuarios.buscar(existente.id) != null
-                val aindaVinculado = viagens.any { it.motoristaId == existente.id } ||
-                    abastecimentos.any { it.motoristaId == existente.id }
-                if (aindaExiste && !aindaVinculado) {
-                    Dados.usuarios.remover(existente.id)
-                    confirmarExclusao = false
-                    aoVoltar()
-                } else {
-                    confirmarExclusao = false
-                }
-            },
-            aoCancelar = {
+                Dados.usuarios.remover(existente.id)
                 confirmarExclusao = false
+                aoVoltar()
             },
+            aoCancelar = { confirmarExclusao = false },
         )
     }
 }
